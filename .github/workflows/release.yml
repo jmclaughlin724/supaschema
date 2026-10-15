@@ -56,7 +56,7 @@ jobs:
     steps:
       # The privileged publish job enforces the endpoint baseline observed in
       # the successful 0.4.0 trusted-publishing run.
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -176,7 +176,7 @@ jobs:
       # release-asset CDN hosts that setup-bun's download redirects to; npm
       # registry access is required for the idempotency probe, trusted
       # publishing, and registry smoke.
-      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+      - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           allowed-endpoints: >
