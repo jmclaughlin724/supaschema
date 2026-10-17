@@ -172,7 +172,7 @@
     "unbash": "4.0.5",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
-    "vitest": "4.1.10",
+    "vitest": "5.0.5",
     "vscode-langservers-extracted": "4.10.0",
     "yaml": "^2.9.0",
     "yaml-language-server": "1.24.0"
