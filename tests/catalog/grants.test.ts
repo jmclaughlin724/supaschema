@@ -308,6 +308,34 @@ describe("applied routine EXECUTE grantees", () => {
     expect(calls[0]).toContain("acl.grantee <> p.proowner");
   });
 
+  it("keys catalog routine signatures the way declarative REVOKE targets are keyed", async () => {
+    const pool: CatalogQuery = {
+      query() {
+        return Promise.resolve({
+          rows: [
+            {
+              args: 'app."Mood", double precision[]',
+              grantees: ["anon"],
+              name: "set_mood",
+              schema: "app",
+            },
+          ],
+        });
+      },
+    };
+    const declared = await extractObjectsFromSql(
+      'REVOKE ALL ON FUNCTION app.set_mood(app."Mood", double precision[]) FROM anon;'
+    );
+    const declaredIdentity = declared.objects.find((object) => object.metadata.verb === "REVOKE")
+      ?.metadata.targetIdentity;
+
+    const granteesByRoutine = await collectRoutineExecuteGrantees(pool);
+
+    expect(typeof declaredIdentity).toBe("string");
+    expect([...granteesByRoutine.keys()]).toEqual([declaredIdentity]);
+    expect(granteesByRoutine.get(String(declaredIdentity))).toEqual(new Set(["anon"]));
+  });
+
   it.skipIf(!databaseUrl)(
     "reads PUBLIC EXECUTE from a default routine ACL and omits a revoked routine",
     async () => {
@@ -321,7 +349,9 @@ describe("applied routine EXECUTE grantees", () => {
         await applySql(
           url,
           `CREATE SCHEMA app;
+           CREATE TYPE app."Mood" AS ENUM ('calm');
            CREATE FUNCTION app.default_acl(p_id uuid) RETURNS uuid LANGUAGE sql AS $$ SELECT p_id $$;
+           CREATE FUNCTION app.mood_echo(p_mood app."Mood") RETURNS app."Mood" LANGUAGE sql AS $$ SELECT p_mood $$;
            CREATE FUNCTION app.revoked(p_at timestamptz) RETURNS timestamptz LANGUAGE sql AS $$ SELECT p_at $$;
            REVOKE ALL ON FUNCTION app.revoked(timestamptz) FROM PUBLIC;`
         );
@@ -330,7 +360,10 @@ describe("applied routine EXECUTE grantees", () => {
 
         expect(granteesByRoutine).toBeInstanceOf(Map);
         expect(granteesByRoutine).toEqual(
-          new Map([["app.default_acl(uuid)", new Set(["PUBLIC"])]])
+          new Map([
+            ["app.default_acl(uuid)", new Set(["PUBLIC"])],
+            ["app.mood_echo(app.Mood)", new Set(["PUBLIC"])],
+          ])
         );
       });
     }

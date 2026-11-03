@@ -350,6 +350,7 @@ function assertBiomeOverrides(overrides: readonly unknown[]): void {
       new Set(["linter.rules.correctness.noUnresolvedImports"]),
     ],
     ["src/index.ts", new Set(["linter.rules.performance.noBarrelFile"])],
+    ["docs/blume.config.ts", new Set(["linter.rules.correctness.noUnresolvedImports"])],
   ]);
   const allowedScopes = new Set([
     JSON.stringify([
@@ -357,6 +358,7 @@ function assertBiomeOverrides(overrides: readonly unknown[]): void {
       "services/license-worker/src/worker.ts",
     ]),
     JSON.stringify(["src/index.ts"]),
+    JSON.stringify(["docs/blume.config.ts"]),
   ]);
   for (const override of overrides) {
     const includes = stringsOf(at(override, "includes"));

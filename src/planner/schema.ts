@@ -219,7 +219,16 @@ function appendRoutinePrivilegeRevokes(
       .filter((operation) => operation.kind === "create" && operation.ref.kind === "grant")
       .map((operation) => operation.key)
   );
-  for (const object of to.objects) {
+  const candidates = new Map<string, SchemaObject>();
+  for (const object of [
+    ...to.objects,
+    ...(appliedExecuteGrantees ? (to.declaredRoutineRevokes ?? []) : []),
+  ]) {
+    if (!candidates.has(object.key)) {
+      candidates.set(object.key, object);
+    }
+  }
+  for (const object of candidates.values()) {
     const targetIdentity = object.metadata.targetIdentity;
     const grantee = object.metadata.grantee;
     if (

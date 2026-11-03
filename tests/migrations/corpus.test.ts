@@ -165,6 +165,41 @@ describe("migration-derived source corpus", () => {
     expect(sql).not.toContain("anon");
   });
 
+  it("re-applies a named-role routine revoke that source normalization nets away", async () => {
+    const root = await mkdtemp(join(tmpdir(), "supa-routine-named-revoke-"));
+    await writeFile(
+      join(root, "schema.sql"),
+      `
+        CREATE SCHEMA app;
+        CREATE FUNCTION app.lookup() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
+        REVOKE ALL ON FUNCTION app.lookup() FROM anon;
+        CREATE FUNCTION app.regranted() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
+        REVOKE ALL ON FUNCTION app.regranted() FROM anon;
+        GRANT EXECUTE ON FUNCTION app.regranted() TO anon;
+      `
+    );
+    const lineageBaseline = await extractSourceModel(`dir:${root}`);
+    const appliedRoutineExecuteGrantees = new Map([
+      ["app.lookup()", new Set(["PUBLIC", "anon"])],
+      ["app.regranted()", new Set(["PUBLIC", "anon"])],
+    ]);
+
+    expect(planSchemaDiff(lineageBaseline, lineageBaseline).operations).toEqual([]);
+    const plan = planSchemaDiff(lineageBaseline, lineageBaseline, {
+      appliedRoutineExecuteGrantees,
+    });
+
+    expect(plan.operations.map((operation) => [operation.kind, operation.key])).toEqual([
+      ["create", "grant:app.revoke:function:app.lookup():anon"],
+    ]);
+    expect(
+      plan.diagnostics.filter((item) => item.code === "SUPA_ROUTINE_PRIVILEGE_DRIFT")
+    ).toHaveLength(1);
+    const sql = renderMigration(plan, { includeHeader: false });
+    expect(sql).toContain('REVOKE ALL ON FUNCTION "app"."lookup"() FROM');
+    expect(sql).not.toContain("regranted");
+  });
+
   it("blocks the plan when the applied routine privilege database cannot be read", async () => {
     const root = await migrationCorpusFixture({ migrationSql: "" });
 

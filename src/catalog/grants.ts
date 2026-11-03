@@ -1,4 +1,6 @@
+import { asRecord, astStatements, objectWithArgsIdentity, readArray } from "../sql/ast.js";
 import { formatQualifiedName } from "../sql/identifiers.js";
+import { parseSqlAst } from "../sql/parser.js";
 import {
   buildDefaultPrivilegeObject,
   buildGrantObject,
@@ -259,7 +261,7 @@ export async function collectGrants(pool: CatalogQuery): Promise<SchemaObject[]>
     const args = text(row.args);
     const grantee = text(row.grantee);
     const privileges = textArray(row.privileges);
-    const targetIdentity = `${schema}.${name}(${args})`;
+    const targetIdentity = await routineIdentity(schema, name, args);
     const withGrantOption = catalogGrantOption(row.is_grantable, targetIdentity);
     if (!withGrantOption && isBuiltinDefaultGrant("FUNCTION", grantee, privileges)) {
       continue;
@@ -300,7 +302,7 @@ export async function collectGrants(pool: CatalogQuery): Promise<SchemaObject[]>
         ordinal: 0,
         privileges: ["ALL"],
         schema,
-        targetIdentity: `${schema}.${name}(${args})`,
+        targetIdentity: await routineIdentity(schema, name, args),
         targetRendered: `${formatQualifiedName(schema, name)}(${args})`,
         verb: "REVOKE",
       })
@@ -374,11 +376,26 @@ export async function collectRoutineExecuteGrantees(
     group by n.nspname, p.proname, args
   `);
   return new Map(
-    rows.rows.map((row) => [
-      `${text(row.schema)}.${text(row.name)}(${text(row.args)})`,
-      new Set(textArray(row.grantees)),
-    ])
+    await Promise.all(
+      rows.rows.map(
+        async (row): Promise<[string, Set<string>]> => [
+          await routineIdentity(text(row.schema), text(row.name), text(row.args)),
+          new Set(textArray(row.grantees)),
+        ]
+      )
+    )
   );
+}
+
+async function routineIdentity(schema: string, name: string, args: string): Promise<string> {
+  const sql = `DROP FUNCTION pg_temp.catalog_routine_signature(${args});`;
+  const parsed = await parseSqlAst(sql);
+  const dropStatement = asRecord(astStatements(parsed.ast, sql)[0]?.node.DropStmt);
+  const identity = objectWithArgsIdentity(readArray(dropStatement?.objects)[0]);
+  if (!identity) {
+    throw new Error(`Catalog routine signature for ${schema}.${name}(${args}) did not parse`);
+  }
+  return `${schema}.${name}(${identity.signature})`;
 }
 
 export async function collectDefaultPrivileges(pool: CatalogQuery): Promise<SchemaObject[]> {

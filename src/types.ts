@@ -85,6 +85,7 @@ export interface SchemaObject {
 }
 
 export interface SchemaModel {
+  declaredRoutineRevokes?: SchemaObject[];
   diagnostics: Diagnostic[];
   fingerprint: string;
   formatVersion?: number;
