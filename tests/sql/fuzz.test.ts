@@ -1,5 +1,5 @@
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { extractCatalogModel } from "../../src/catalog/extract.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
@@ -119,7 +119,7 @@ const strictKinds = new Set([
 
 describe.skipIf(!databaseUrl)("seeded round-trip fuzz", () => {
   const seeds = [11, 42, 1337, 2026, 90_210];
-  it.each(seeds)(
+  test.each(seeds)(
     "round-trips generated tree (seed %i) through a live catalog without false changes",
     {
       timeout: 60_000,

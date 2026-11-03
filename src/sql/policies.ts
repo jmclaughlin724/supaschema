@@ -10,8 +10,12 @@ import {
 import { parseSqlAst } from "./parser.js";
 
 export function policyMetadataFromAst(node: AstNode): Record<string, unknown> {
-  const usingColumns = [...collectColumnReferences(node.qual)].sort();
-  const checkColumns = [...collectColumnReferences(node.with_check)].sort();
+  const usingColumns = [...collectColumnReferences(node.qual)].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
+  const checkColumns = [...collectColumnReferences(node.with_check)].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
   const functionFacts = policyFunctionFacts([node.qual, node.with_check]);
   const roles = policyRoles(node);
   return {
@@ -53,8 +57,12 @@ function policyFunctionFacts(values: unknown[]): {
     visitPolicyFunctionValue(value, false, facts);
   }
   return {
-    functionCalls: [...facts.functionCalls].sort(),
-    unwrappedFunctionCalls: [...facts.unwrappedFunctionCalls].sort(),
+    functionCalls: [...facts.functionCalls].sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    ),
+    unwrappedFunctionCalls: [...facts.unwrappedFunctionCalls].sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    ),
   };
 }
 

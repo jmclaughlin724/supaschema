@@ -26,9 +26,11 @@ const pgState = vi.hoisted(
 
 vi.mock("pg", () => {
   class FakePool {
+    private readonly recorder = pgState;
+
     constructor(options: unknown) {
-      pgState.poolConstructions += 1;
-      pgState.poolOptions.push(options);
+      this.recorder.poolConstructions += 1;
+      this.recorder.poolOptions.push(options);
     }
 
     on(): this {
@@ -36,15 +38,15 @@ vi.mock("pg", () => {
     }
 
     query(text: unknown): Promise<{ rows: never[] }> {
-      pgState.queryTexts.push(typeof text === "string" ? text : String(text));
-      if (pgState.queryError !== undefined) {
-        return Promise.reject(pgState.queryError);
+      this.recorder.queryTexts.push(typeof text === "string" ? text : String(text));
+      if (this.recorder.queryError !== undefined) {
+        return Promise.reject(this.recorder.queryError);
       }
       return Promise.resolve({ rows: [] });
     }
 
     end(): Promise<void> {
-      pgState.poolEndCalls += 1;
+      this.recorder.poolEndCalls += 1;
       return Promise.resolve();
     }
   }

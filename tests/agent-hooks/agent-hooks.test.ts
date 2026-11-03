@@ -22,7 +22,9 @@ describe("registered hook topology", () => {
   it("registers only the retained Claude events and exact matchers", async () => {
     const settings = JSON.parse(await readFile(join(root, ".claude/settings.json"), "utf8"));
 
-    expect(Object.keys(settings.hooks).sort()).toEqual(
+    expect(
+      Object.keys(settings.hooks).sort((left, right) => Number(left > right) - Number(left < right))
+    ).toEqual(
       [
         "PostToolUse",
         "PostToolUseFailure",
@@ -34,7 +36,7 @@ describe("registered hook topology", () => {
         "SubagentStop",
         "TaskCompleted",
         "UserPromptSubmit",
-      ].sort()
+      ].sort((left, right) => Number(left > right) - Number(left < right))
     );
     expect(settings.hooks.WorktreeCreate).toBeUndefined();
     expect(matcherFor(settings, "PreToolUse", "context-pre-tool-use.mts")).toBe(
@@ -61,7 +63,9 @@ describe("registered hook topology", () => {
   it("keeps Codex context hooks but omits Claude-only failure and completion events", async () => {
     const config = JSON.parse(await readFile(join(root, ".codex/hooks.json"), "utf8"));
 
-    expect(Object.keys(config.hooks).sort()).toEqual(
+    expect(
+      Object.keys(config.hooks).sort((left, right) => Number(left > right) - Number(left < right))
+    ).toEqual(
       [
         "PostToolUse",
         "PreToolUse",
@@ -71,7 +75,7 @@ describe("registered hook topology", () => {
         "SubagentStart",
         "SubagentStop",
         "UserPromptSubmit",
-      ].sort()
+      ].sort((left, right) => Number(left > right) - Number(left < right))
     );
     expect(config.hooks.PostToolUseFailure).toBeUndefined();
     expect(config.hooks.TaskCompleted).toBeUndefined();
@@ -95,7 +99,9 @@ describe("registered hook topology", () => {
       );
 
       expect(hookHandlers(claude)).toHaveLength(2);
-      expect(Object.keys(claude.hooks).sort()).toEqual(["PostToolUse", "PreToolUse"]);
+      expect(
+        Object.keys(claude.hooks).sort((left, right) => Number(left > right) - Number(left < right))
+      ).toEqual(["PostToolUse", "PreToolUse"]);
       expect(matcherFor(claude, "PreToolUse", "generated-artifact-edit")).toBe(
         "Write|Edit|MultiEdit|apply_patch"
       );
@@ -106,7 +112,9 @@ describe("registered hook topology", () => {
       expect(JSON.stringify(claude)).not.toContain("sync-llm");
 
       expect(hookHandlers(codex)).toHaveLength(2);
-      expect(Object.keys(codex.hooks).sort()).toEqual(["PostToolUse", "PreToolUse"]);
+      expect(
+        Object.keys(codex.hooks).sort((left, right) => Number(left > right) - Number(left < right))
+      ).toEqual(["PostToolUse", "PreToolUse"]);
       expect(matcherFor(codex, "PreToolUse", "generated-artifact-edit")).toBe("apply_patch");
       expect(matcherFor(codex, "PostToolUse", "schema-write")).toBe("apply_patch");
       expect(JSON.stringify(codex)).not.toContain("context-");
@@ -340,11 +348,9 @@ describe("actual context hook entrypoints", () => {
         "timed out waiting for session state lock"
       );
       expect(await readdir(lockDirectory)).toEqual([ownerName]);
-      if (process.platform !== "win32") {
-        expect((await stat(lockDirectory)).mode % 0o1000).toBe(0o700);
-        expect((await stat(ownerPath)).mode % 0o1000).toBe(0o600);
-      }
-      expect(Object.keys(owner).sort()).toEqual(["acquiredAt", "pid", "token"]);
+      expect(
+        Object.keys(owner).sort((left, right) => Number(left > right) - Number(left < right))
+      ).toEqual(["acquiredAt", "pid", "token"]);
     } finally {
       await killProcess(lockHolder);
     }
@@ -363,6 +369,28 @@ describe("actual context hook entrypoints", () => {
     expect(recoveredEnd).toMatchObject({ code: 0, stderr: "", stdout: "" });
     expect(await pathExists(lockDirectory)).toBe(false);
   });
+
+  it.skipIf(process.platform === "win32")(
+    "holds a live lock with private directory and owner permissions",
+    { timeout: 20_000 },
+    async () => {
+      const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-private-lock-"));
+      const env = hookEnvironment("claude", { STATE_DIR: stateDir });
+      const sessionId = "entrypoint-private-lock";
+      const lockDirectory = join(
+        stateDir,
+        `${Buffer.from(sessionId).toString("base64url")}.json.lock`
+      );
+      const lockHolder = await startLockHolder(sessionId, env);
+      try {
+        const [ownerName] = await readdir(lockDirectory);
+        expect((await stat(lockDirectory)).mode % 0o1000).toBe(0o700);
+        expect((await stat(join(lockDirectory, ownerName))).mode % 0o1000).toBe(0o600);
+      } finally {
+        await killProcess(lockHolder);
+      }
+    }
+  );
 
   it("leaves no lock artifacts when contending waiters are killed", {
     timeout: 20_000,

@@ -183,7 +183,7 @@ function generatedTypeBlock(
   return end === -1 ? types.slice(start) : types.slice(start, end + 3);
 }
 
-async function expectTypeScriptAccepts(source: string): Promise<void> {
+async function typeScriptDiagnostics(source: string): Promise<string> {
   const tmpRoot = join(process.cwd(), ".tmp");
   await mkdir(tmpRoot, { recursive: true });
   const root = await mkdtemp(join(tmpRoot, "supa-typegen-ts-"));
@@ -209,7 +209,7 @@ async function expectTypeScriptAccepts(source: string): Promise<void> {
     )}\n`
   );
   try {
-    await execFileAsync(
+    const { stderr, stdout } = await execFileAsync(
       process.execPath,
       [typescriptCompilerPath(), "--project", config, "--pretty", "false"],
       {
@@ -217,8 +217,9 @@ async function expectTypeScriptAccepts(source: string): Promise<void> {
         maxBuffer: 1024 * 1024,
       }
     );
+    return `${stdout}${stderr}`;
   } catch (error) {
-    throw new Error(commandErrorOutput(error), { cause: error });
+    return commandErrorOutput(error);
   }
 }
 
@@ -834,7 +835,8 @@ CREATE TABLE public.movies (id bigint);
   it("type-checks upstream helper contracts", async () => {
     const types = await typesFor(helperSql);
 
-    await expectTypeScriptAccepts(`${types}
+    expect(
+      await typeScriptDiagnostics(`${types}
 const movie: Tables<"movies"> = { id: 1, name: "Heat", visibility: "public" };
 const movieView: Tables<"movie_names"> = { id: 1, name: "Heat" };
 const movieInsert: TablesInsert<"movies"> = { name: "Heat" };
@@ -855,7 +857,8 @@ void accountInsert;
 void accountUpdate;
 void status;
 void address;
-`);
+`)
+    ).toBe("");
   }, 15_000);
 
   it("type-checks schema-qualified helpers without a public schema", async () => {
@@ -863,14 +866,16 @@ void address;
 CREATE TABLE app.accounts (id bigint);
 `);
 
-    await expectTypeScriptAccepts(`${types}
+    expect(
+      await typeScriptDiagnostics(`${types}
 const account: Tables<{ schema: "app" }, "accounts"> = { id: 1 };
 const accountInsert: TablesInsert<{ schema: "app" }, "accounts"> = { id: 1 };
 const accountUpdate: TablesUpdate<{ schema: "app" }, "accounts"> = { id: 2 };
 void account;
 void accountInsert;
 void accountUpdate;
-`);
+`)
+    ).toBe("");
   }, 15_000);
 
   it("emits TypeScript and Zod output from one precomputed shape graph", async () => {
@@ -970,7 +975,8 @@ describe("overloaded function typegen", () => {
 
     expect(types).toContain("f: { Args: { a: number }; Returns:");
     expect(types).toContain("{ Args: { b: string }; Returns:");
-    await expectTypeScriptAccepts(`${types}
+    expect(
+      await typeScriptDiagnostics(`${types}
 const numeric: Database["app"]["Functions"]["f"] = { Args: { a: 1 }, Returns: 1 };
 const textual: Database["app"]["Functions"]["f"] = { Args: { b: "x" }, Returns: "x" };
 // @ts-expect-error Returns must stay correlated with the matching Args overload.
@@ -978,7 +984,8 @@ const invalid: Database["app"]["Functions"]["f"] = { Args: { a: 1 }, Returns: "x
 void numeric;
 void textual;
 void invalid;
-`);
+`)
+    ).toBe("");
   });
 
   it("emits upstream conflict signatures for same-named arguments", async () => {
@@ -1159,7 +1166,8 @@ describe("zod schema generation", () => {
     const zod = await zodFor(helperSql);
     const zodWithoutJsonImport = zod.split("\n").slice(1).join("\n");
 
-    await expectTypeScriptAccepts(`${types}${zodWithoutJsonImport}
+    expect(
+      await typeScriptDiagnostics(`${types}${zodWithoutJsonImport}
 const movie: Tables<"movies"> = SupaschemaZod.public.Tables.movies.Row.parse({ id: 1, name: "Heat", visibility: "public" });
 const movieView: Tables<"movie_names"> = SupaschemaZod.public.Views.movie_names.Row.parse({ id: 1, name: "Heat" });
 const movieInsert: TablesInsert<"movies"> = SupaschemaZod.public.Tables.movies.Insert.parse({ name: "Heat" });
@@ -1190,7 +1198,8 @@ void status;
 void address;
 void parsedName;
 void wrong;
-`);
+`)
+    ).toBe("");
   }, 15_000);
 
   it("omits an unused Database import from scalar-only schemas", async () => {
@@ -1261,14 +1270,16 @@ void wrong;
     expect(zod).toContain(
       'home: z.lazy(() => SupaschemaZod["app"]["CompositeTypes"]["address"]).nullable(),'
     );
-    await expectTypeScriptAccepts(`${zod}
+    expect(
+      await typeScriptDiagnostics(`${zod}
 const account = SupaschemaZod.app.Tables.accounts.Row.parse({
   id: 1,
   state: "active",
   home: { street: "Main", zip: 1 },
 });
 void account;
-`);
+`)
+    ).toBe("");
   }, 15_000);
 
   it("keeps computed relationship validators aligned with generated rows", async () => {
@@ -1285,14 +1296,16 @@ CREATE FUNCTION public.related_account(public.accounts) RETURNS public.related_a
     expect(zod).toContain(
       'related_account: z.lazy((): z.ZodType<Database["public"]["Tables"]["related_accounts"]["Row"]> => SupaschemaZod["public"]["Tables"]["related_accounts"].Row).nullable(),'
     );
-    await expectTypeScriptAccepts(`${types}${zodWithoutTypesImport}
+    expect(
+      await typeScriptDiagnostics(`${types}${zodWithoutTypesImport}
 const account: Tables<"accounts"> = SupaschemaZod.public.Tables.accounts.Row.parse({
   id: 1,
   account_label: null,
   related_account: null,
 });
 void account;
-`);
+`)
+    ).toBe("");
   }, 15_000);
 
   it("separates same-named enum and composite validators by schema/object namespace", async () => {

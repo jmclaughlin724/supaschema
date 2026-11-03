@@ -689,7 +689,7 @@ describe("standalone column identity amendments", () => {
     expect(plan.operations.find((operation) => operation.key === "table:app.t")?.kind).toBe(
       "alter"
     );
-    expect(sql).toContain("SET INCREMENT BY 5;");
+    expect(sql).toContain("SET INCREMENT 5;");
   });
 });
 

@@ -122,24 +122,19 @@ function assertCodexServerShape(serverName: string, config: JsonRecord): void {
       `.codex/config.toml ${serverName} has unsupported key ${key}`
     );
   }
-  if (config.enabled !== undefined) {
-    assert(
-      typeof config.enabled === "boolean",
-      `.codex/config.toml ${serverName}.enabled must be boolean`
-    );
-  }
-  if (config.required !== undefined) {
-    assert(
-      typeof config.required === "boolean",
-      `.codex/config.toml ${serverName}.required must be boolean`
-    );
-  }
-  if (config.default_tools_approval_mode !== undefined) {
-    assert(
+  assert(
+    config.enabled === undefined || typeof config.enabled === "boolean",
+    `.codex/config.toml ${serverName}.enabled must be boolean`
+  );
+  assert(
+    config.required === undefined || typeof config.required === "boolean",
+    `.codex/config.toml ${serverName}.required must be boolean`
+  );
+  assert(
+    config.default_tools_approval_mode === undefined ||
       config.default_tools_approval_mode === "approve",
-      `.codex/config.toml ${serverName} default_tools_approval_mode must remain approve`
-    );
-  }
+    `.codex/config.toml ${serverName} default_tools_approval_mode must remain approve`
+  );
 }
 
 function assertSameServerNames(
@@ -147,8 +142,12 @@ function assertSameServerNames(
   expected: readonly string[],
   message: string
 ): void {
-  const sortedActual = [...actual].sort();
-  const sortedExpected = [...expected].sort();
+  const sortedActual = [...actual].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
+  const sortedExpected = [...expected].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
   assert(
     isDeepStrictEqual(sortedActual, sortedExpected),
     `${message}; expected ${JSON.stringify(sortedExpected)}, received ${JSON.stringify(sortedActual)}`
@@ -245,12 +244,10 @@ export function check(root = ROOT): string {
     );
     assert(isRecord(config), `.codex/config.toml ${serverName} must be a table`);
     assertCodexServerShape(serverName, config);
-    if (registryOnlyServers.includes(serverName)) {
-      assert(
-        config.enabled === false,
-        `.codex/config.toml registry-only server ${serverName} must remain disabled`
-      );
-    }
+    assert(
+      !registryOnlyServers.includes(serverName) || config.enabled === false,
+      `.codex/config.toml registry-only server ${serverName} must remain disabled`
+    );
   }
   for (const serverName of requiredSharedServers) {
     assert(codexServers[serverName], `.codex/config.toml missing ${serverName}`);

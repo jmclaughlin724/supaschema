@@ -1,8 +1,12 @@
 [project]
 name = "supaschema-agent-mcp"
 version = "0.0.0"
-requires-python = ">=3.12,<3.13"
-dependencies = ["fastmcp==3.4.2", "pydantic==2.13.4", "pytest-asyncio==1.4.0"]
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "fastmcp==4.1.6",
+  "pydantic==2.14.2",
+  "pytest-asyncio==1.4.1.post1",
+]
 
 [project.scripts]
 supaschema-agent-mcp = "supaschema_agent_mcp.server:main"

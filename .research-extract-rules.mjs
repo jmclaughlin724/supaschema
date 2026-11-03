@@ -11,15 +11,15 @@ const files = readdirSync(rulesDir, { withFileTypes: true })
 const results = [];
 for (const file of files) {
   const path = join(rulesDir, file);
-  const content = readFileSync(path, "utf8");
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) {
+  const lines = readFileSync(path, "utf8").split("\n");
+  const closing = lines.indexOf("---", 1);
+  if (lines[0] !== "---" || closing === -1) {
     results.push({ file, path, error: "NO_FRONTMATTER" });
     continue;
   }
   let fm;
   try {
-    fm = parseYaml(match[1]);
+    fm = parseYaml(lines.slice(1, closing).join("\n"));
   } catch {
     results.push({ file, path, error: "YAML_PARSE_ERROR" });
     continue;

@@ -579,7 +579,9 @@ function readLockOwner(ownerPath: string, ownerName: string): LockOwner | null |
     if (!isRecord(value)) {
       return;
     }
-    const fields = Object.keys(value).sort();
+    const fields = Object.keys(value).sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    );
     const pid = value.pid;
     if (
       fields.join(",") !== "acquiredAt,pid,token" ||

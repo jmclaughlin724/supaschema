@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, test } from "vitest";
 import {
   expectedHeaderFragments,
   expectedMigrationFragments,
@@ -274,7 +274,7 @@ describe("consumer lifecycle: workspace member install from member directory", (
 });
 
 describe.skipIf(!pnpm11Available)("consumer lifecycle: pnpm install and recovery lanes", () => {
-  it("pnpm add plus explicit init scaffolds the project", async () => {
+  test("pnpm add plus explicit init scaffolds the project", async () => {
     const pnpmConsumer = await mkdtemp(join(tmpdir(), "supa-pnpm-consumer-"));
     await writeFile(
       join(pnpmConsumer, "package.json"),
@@ -305,7 +305,7 @@ describe.skipIf(!pnpm11Available)("consumer lifecycle: pnpm install and recovery
     expect(lastNonEmptyLine(version.stdout)).toBe(repoVersion);
   }, 300_000);
 
-  it("pnpm add without setup can recover through pnpm exec supaschema init", async () => {
+  test("pnpm add without setup can recover through pnpm exec supaschema init", async () => {
     const pnpmConsumer = await mkdtemp(join(tmpdir(), "supa-pnpm-init-"));
     await writeFile(
       join(pnpmConsumer, "package.json"),
@@ -341,7 +341,7 @@ describe.skipIf(!pnpm11Available)("consumer lifecycle: pnpm install and recovery
     expect(existsSync(join(pnpmConsumer, ".supaschema"))).toBe(false);
   }, 300_000);
 
-  it("pnpm workspace member install uses explicit init from the member", async () => {
+  test("pnpm workspace member install uses explicit init from the member", async () => {
     const workspace = await mkdtemp(join(tmpdir(), "supa-pnpm-workspace-"));
     const member = join(workspace, "packages", "db");
     await mkdir(member, { recursive: true });
@@ -383,7 +383,7 @@ describe.skipIf(!pnpm11Available)("consumer lifecycle: pnpm install and recovery
 });
 
 describe.skipIf(!bunAvailable)("consumer lifecycle: Bun workspace member setup", () => {
-  it("bun workspace member install uses untrusted add then explicit init from the member", async () => {
+  test("bun workspace member install uses untrusted add then explicit init from the member", async () => {
     const workspace = await mkdtemp(join(tmpdir(), "supa-bun-workspace-"));
     const member = join(workspace, "packages", "db");
     await mkdir(member, { recursive: true });

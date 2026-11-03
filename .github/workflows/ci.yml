@@ -16,13 +16,14 @@ concurrency:
 jobs:
   quality:
     # DB-independent gates: run once, no postgres service. Exercises the
-    # publish runtime (node 22 floor + 24 release major) without the matrix.
+    # node 22 floor, the 24 release major, and the 26 current LTS without the
+    # postgres matrix.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22, 24]
+        node-version: [22, 24, 26]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

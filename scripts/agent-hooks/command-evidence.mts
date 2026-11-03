@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ParseArgsOptionsConfig } from "node:util";
-import type { AndOr, Command, LogicalOperator, Node, ParsedScript } from "unbash";
+import type { AndOr, Command, LogicalOperator, ParsedScript, SyntaxNode, Word } from "unbash";
 import { recordOf } from "../lib/json.mts";
 import type { HookCheckResult } from "./hook-output.mts";
 import type { HookPayload, HookRuntime } from "./hook-runtime.mts";
@@ -77,7 +77,7 @@ export function classifyCommandOutcomeDomains(
     scripts: packageScripts(options.root ?? process.cwd()),
     visitedScripts: new Set(),
   });
-  return [...result.domains].sort();
+  return [...result.domains].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 function shellCommand(payload: HookPayload): string {
@@ -119,7 +119,7 @@ function classifySuccessEvidenceScript(
 }
 
 function classifySuccessEvidenceNode(
-  node: Node | undefined,
+  node: SyntaxNode | undefined,
   context: ClassificationContext
 ): Classification {
   if (node?.type === "Command") {
@@ -149,7 +149,7 @@ function classifyFailureEvidenceScript(
 }
 
 function classifyFailureEvidenceNode(
-  node: Node | undefined,
+  node: SyntaxNode | undefined,
   context: ClassificationContext
 ): Classification {
   if (node?.type === "Command") {
@@ -187,7 +187,7 @@ function classifyFailureCauseScript(
 }
 
 function classifyFailureCauseNode(
-  node: Node | undefined,
+  node: SyntaxNode | undefined,
   context: ClassificationContext
 ): Classification {
   if (node?.type === "Command") {
@@ -208,17 +208,13 @@ function classifyFailureCauseNode(
   );
 }
 
-function singleOutcomeNode(script: ParsedScript): Node | undefined {
+function singleOutcomeNode(script: ParsedScript): SyntaxNode | undefined {
   const statements = script?.commands ?? [];
   if (statements.length !== 1) {
     return;
   }
   const statement = statements[0];
-  if (
-    statement?.type !== "Statement" ||
-    statement.background ||
-    (statement.redirects ?? []).length > 0
-  ) {
+  if (statement?.type !== "Statement" || statement.background) {
     return;
   }
   return statement.command;
@@ -239,7 +235,7 @@ function classifyCommandNode(node: Command, context: ClassificationContext): Cla
     return emptyClassification();
   }
   const name = executableName(staticWordValue(node.name));
-  const args = (node.suffix ?? []).map(staticWordValue);
+  const args = node.args.map(staticWordValue);
   if (!(name && args.every((value) => value !== null))) {
     return emptyClassification();
   }
@@ -436,7 +432,13 @@ function combineClassifications(
 }
 
 function parseValues(args: readonly string[], options: ParseArgsOptionsConfig = {}) {
-  const words = args.map((value, index) => ({ end: index, pos: index, text: value, value }));
+  const words: Word[] = args.map((value, index) => ({
+    end: index,
+    pos: index,
+    text: value,
+    type: "Word",
+    value,
+  }));
   return parseStaticArguments(words, { options });
 }
 

@@ -122,7 +122,9 @@ describe("agent surface sync", { timeout: 30_000 }, () => {
     const indexEntries = (await readFile(join(root, "agent-bundle/docs/index.md"), "utf8"))
       .split("\n")
       .filter((line) => line.startsWith("- ["));
-    expect(indexEntries).toEqual([...indexEntries].sort());
+    expect(indexEntries).toEqual(
+      [...indexEntries].sort((left, right) => Number(left > right) - Number(left < right))
+    );
   });
 
   it("repairs generated Codex hook config drift", async () => {

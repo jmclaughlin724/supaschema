@@ -70,8 +70,8 @@ function validPackage() {
     },
     scripts: {
       "bench:plot:headtohead":
-        "node benchmarks/plot-head-to-head.js && npm run format -- docs/images/benchmarks",
-      diagrams: "node benchmarks/plot-concepts.js && npm run format -- docs/images/concepts",
+        "node benchmarks/plot-head-to-head.js && npm run format -- docs/public/images/benchmarks",
+      diagrams: "node benchmarks/plot-concepts.js && npm run format -- docs/public/images/concepts",
       format: "node scripts/format.mts",
       "format:json": "sort-package-json",
       "format:md": 'prettier --write "**/*.{astro,md,mdx,yml,yaml}"',
@@ -120,6 +120,7 @@ function validFiles() {
           "!.claude/skills/code-review/references/workflow-backed-code-review.js",
           "!.claude/skills/deep-research/references/workflow-backed-deep-research.js",
           "!tests/fixtures/sample-project/supabase/functions",
+          "!tests/fixtures/agent-hooks/retired-sync-llm-on-claude-surface-change.mjs",
           "!.agents",
           "!.codex",
         ],

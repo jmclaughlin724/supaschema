@@ -71,7 +71,9 @@ export async function migrationsStatus(
   const expectedAppliedVersions =
     options.expectedAppliedVersions === undefined
       ? migrationFileVersions(files)
-      : [...options.expectedAppliedVersions].sort();
+      : [...options.expectedAppliedVersions].sort(
+          (left, right) => Number(left > right) - Number(left < right)
+        );
   const report: MigrationsStatusReport = {
     applied: [],
     appliedLineage: [],
@@ -111,7 +113,10 @@ export async function migrationsStatus(
     return { diagnostics, report };
   }
   const diskVersions = new Set(versionsByFile.values());
-  const newestApplied = [...appliedVersions].sort().at(-1) ?? "";
+  const newestApplied =
+    [...appliedVersions]
+      .sort((left, right) => Number(left > right) - Number(left < right))
+      .at(-1) ?? "";
   const comparison = compareMigrationHistory(appliedVersions, expectedAppliedVersions);
   report.missingExpectedVersions = comparison.missingExpectedVersions;
   report.unexpectedAppliedVersions = comparison.unexpectedAppliedVersions;
@@ -204,7 +209,9 @@ export function compareMigrationHistory(
   expectedAppliedVersions: Iterable<string>
 ): MigrationHistoryComparison {
   const applied = new Set(appliedVersions);
-  const expected = [...new Set(expectedAppliedVersions)].sort();
+  const expected = [...new Set(expectedAppliedVersions)].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
   const expectedSet = new Set(expected);
   return {
     expectedAppliedVersions: expected,

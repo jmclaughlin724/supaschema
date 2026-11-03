@@ -130,7 +130,9 @@ async function commitScopedModelKey(
     cwd,
     MODEL_FORMAT_VERSION,
     stableJson(resolveConfig(options.config)),
-    [...(options.excludeMigrationFiles ?? [])].sort(),
+    [...(options.excludeMigrationFiles ?? [])].sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    ),
   ]);
 }
 

@@ -197,7 +197,9 @@ async function forwardReferenceOrderDiagnostics(
           "error",
           "migration statement references an object or column created later in the same file",
           {
-            hint: [...forwardRelations, ...forwardColumns].sort().join(", "),
+            hint: [...forwardRelations, ...forwardColumns]
+              .sort((left, right) => Number(left > right) - Number(left < right))
+              .join(", "),
             statement: current.statement.text,
           }
         )

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { main as formatMain, validateFormatTargets } from "../scripts/format.mts";
 import {
   collectRepoFiles,
+  existingLocalBiomePaths,
   isRepositoryContextPath,
   LOCAL_BIOME_PATHS,
   LOCAL_REPOSITORY_FILES,
@@ -89,6 +90,14 @@ describe("formatter file discovery", () => {
     expect(isRepositoryContextPath(".private/config.json")).toBe(false);
   });
 
+  it("passes only local Biome paths that exist", async () => {
+    const root = await mkdtemp(join(tmpdir(), "supaschema-local-biome-paths-"));
+    temporaryRoots.push(root);
+    await mkdir(join(root, ".claude/skills"), { recursive: true });
+
+    expect(existingLocalBiomePaths(root)).toEqual([".claude/skills"]);
+  });
+
   it.skipIf(process.platform === "win32")(
     "does not return a repository symlink that targets an external file",
     async () => {
@@ -131,10 +140,11 @@ describe("Ultracite runners", () => {
 
   it("executes visible and bounded local lint passes", () => {
     const calls: Array<{ args: string[]; label: string }> = [];
-    const status = lintMain(["--max-diagnostics=25"], (args: string[], label: string) => {
+    const record = (args: string[], label: string) => {
       calls.push({ args, label });
       return 0;
-    });
+    };
+    const status = lintMain(["--max-diagnostics=25"], record, [".claude/skills", ".vscode"]);
 
     expect(status).toBe(0);
     expect(calls).toEqual([
@@ -145,13 +155,18 @@ describe("Ultracite runners", () => {
       {
         args: [
           "check",
-          ...LOCAL_BIOME_PATHS,
+          ".claude/skills",
+          ".vscode",
           "--vcs-use-ignore-file=false",
           "--max-diagnostics=25",
         ],
         label: "ignored local repository files",
       },
     ]);
+
+    calls.length = 0;
+    expect(lintMain([], record, [])).toBe(0);
+    expect(calls).toEqual([{ args: ["check", "."], label: "Git-visible repository files" }]);
   });
 
   it("keeps the full format chain and scoped Ultracite mode behind one owner", async () => {
@@ -167,21 +182,25 @@ describe("Ultracite runners", () => {
     );
 
     const calls: string[] = [];
-    const status = formatMain([], {
-      runNpmScript: (name: string) => {
-        calls.push(`npm:${name}`);
-        return 0;
+    const status = formatMain(
+      [],
+      {
+        runNpmScript: (name: string) => {
+          calls.push(`npm:${name}`);
+          return 0;
+        },
+        runUltracite: (args: string[]) => {
+          calls.push(`ultracite:${args.join(" ")}`);
+          return 0;
+        },
       },
-      runUltracite: (args: string[]) => {
-        calls.push(`ultracite:${args.join(" ")}`);
-        return 0;
-      },
-    });
+      [".claude/skills"]
+    );
     expect(status).toBe(0);
     expect(calls).toEqual([
       "npm:format:json",
       "ultracite:fix .",
-      `ultracite:fix ${LOCAL_BIOME_PATHS.join(" ")} --vcs-use-ignore-file=false`,
+      "ultracite:fix .claude/skills --vcs-use-ignore-file=false",
       "npm:format:md",
       "npm:format:toml",
       "npm:format:sh",

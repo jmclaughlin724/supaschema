@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOCAL_BIOME_PATHS } from "./lib/repo-files.mts";
+import { existingLocalBiomePaths } from "./lib/repo-files.mts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ultraciteBinary = resolve(repositoryRoot, "node_modules", "ultracite", "dist", "index.js");
@@ -70,7 +70,11 @@ export function parseLintArguments(args: readonly string[]): LintArguments {
   return { forwardedArgs, useGithubReporter };
 }
 
-export function main(args = process.argv.slice(2), run = runUltracite) {
+export function main(
+  args = process.argv.slice(2),
+  run = runUltracite,
+  localPaths = existingLocalBiomePaths(repositoryRoot)
+) {
   let parsed: LintArguments;
   try {
     parsed = parseLintArguments(args);
@@ -83,16 +87,19 @@ export function main(args = process.argv.slice(2), run = runUltracite) {
     ["check", ".", ...reporterArgs, ...parsed.forwardedArgs],
     "Git-visible repository files"
   );
-  const localStatus = run(
-    [
-      "check",
-      ...LOCAL_BIOME_PATHS,
-      "--vcs-use-ignore-file=false",
-      ...reporterArgs,
-      ...parsed.forwardedArgs,
-    ],
-    "ignored local repository files"
-  );
+  const localStatus =
+    localPaths.length === 0
+      ? 0
+      : run(
+          [
+            "check",
+            ...localPaths,
+            "--vcs-use-ignore-file=false",
+            ...reporterArgs,
+            ...parsed.forwardedArgs,
+          ],
+          "ignored local repository files"
+        );
   return [visibleStatus, localStatus].find((status) => status !== 0) ?? 0;
 }
 

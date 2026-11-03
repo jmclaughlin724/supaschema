@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { registerReportCommands } from "../../src/cli/reports.js";
 import { resolveConfig } from "../../src/config/schema.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
@@ -1483,7 +1483,11 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
         "database/migrations/20260101000000_generated.sql",
         "database/migrations/20260101000000_generated.concurrent.sql",
       ]);
-      expect([...staged].sort()).toEqual([...result.staged].sort());
+      expect(
+        [...staged].sort((left, right) => Number(left > right) - Number(left < right))
+      ).toEqual(
+        [...result.staged].sort((left, right) => Number(left > right) - Number(left < right))
+      );
     } finally {
       process.chdir(previousCwd);
     }
@@ -1654,7 +1658,7 @@ function requiredDatabaseUrl(): string {
 }
 
 describe.skipIf(!databaseUrl)("sync (against a target)", () => {
-  it("auto-applies the configured local direct target with the default workflow", async () => {
+  test("auto-applies the configured local direct target with the default workflow", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_auto_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1712,7 +1716,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("generates and applies a second edit after an applied predecessor", {
+  test("generates and applies a second edit after an applied predecessor", {
     timeout: 30_000,
   }, async () => {
     const admin = new Client({ connectionString: databaseUrl });
@@ -1798,7 +1802,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("auto-deploys an approved remote direct target", async () => {
+  test("auto-deploys an approved remote direct target", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_remote_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1877,7 +1881,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("refuses an approved remote target without a separate verify database", async () => {
+  test("refuses an approved remote target without a separate verify database", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_remote_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1951,7 +1955,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("runs verify before applying an approved remote target", async () => {
+  test("runs verify before applying an approved remote target", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_apply_remote_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2027,7 +2031,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies pending files with the direct PostgreSQL runner", async () => {
+  test("applies pending files with the direct PostgreSQL runner", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_direct_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2088,7 +2092,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies target pending files from the selected target history", async () => {
+  test("applies target pending files from the selected target history", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_target_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2161,7 +2165,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies pending chains without collapsing per-file transaction boundaries", async () => {
+  test("applies pending chains without collapsing per-file transaction boundaries", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_verify_chain_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2227,7 +2231,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("refuses on ghost history", async () => {
+  test("refuses on ghost history", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2282,7 +2286,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("runs deploy type safety from the selected target catalog", async () => {
+  test("runs deploy type safety from the selected target catalog", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_type_catalog_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;

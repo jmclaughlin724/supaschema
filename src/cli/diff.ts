@@ -543,18 +543,19 @@ async function watchDiff(
   };
   await run();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const scheduleRun = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      run().catch((error: unknown) => {
+        process.stderr.write(
+          `${redactSecrets(error instanceof Error ? error.message : String(error))}\n`
+        );
+        process.exitCode = 2;
+      });
+    }, 250);
+  };
   for (const dir of watchedDirs) {
-    watch(dir, { recursive: true }, () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        run().catch((error: unknown) => {
-          process.stderr.write(
-            `${redactSecrets(error instanceof Error ? error.message : String(error))}\n`
-          );
-          process.exitCode = 2;
-        });
-      }, 250);
-    });
+    watch(dir, { recursive: true }, scheduleRun);
   }
   process.stdout.write(`watch: watching ${watchedDirs.join(", ")} (ctrl-c to exit)\n`);
   await new Promise(() => undefined);
@@ -1169,7 +1170,7 @@ export function renderPlanSummary(plan: MigrationPlan): string {
     operationCounts.set(label, entry);
   }
   lines.push(`  operations: ${plan.operations.length}`);
-  for (const [label, entry] of [...operationCounts.entries()].sort()) {
+  for (const [label, entry] of [...operationCounts.entries()].sort(compareEntryText)) {
     lines.push(colorizeSummaryLine(`    ${entry.count} ${label}`, entry.tone));
   }
   const diagnosticCounts = new Map<string, number>();
@@ -1181,10 +1182,16 @@ export function renderPlanSummary(plan: MigrationPlan): string {
     diagnosticCounts.set(label, (diagnosticCounts.get(label) ?? 0) + 1);
   }
   lines.push(`  diagnostics: ${plan.diagnostics.length}`);
-  for (const [label, count] of [...diagnosticCounts.entries()].sort()) {
+  for (const [label, count] of [...diagnosticCounts.entries()].sort(compareEntryText)) {
     lines.push(`    ${count} ${label}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function compareEntryText(left: readonly unknown[], right: readonly unknown[]): number {
+  const leftText = String(left);
+  const rightText = String(right);
+  return Number(leftText > rightText) - Number(leftText < rightText);
 }
 
 function renderCombinedSql(sql: string, concurrentSql: string): string {

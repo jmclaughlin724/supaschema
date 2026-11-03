@@ -161,7 +161,10 @@
             "globPattern": "**/*@(.sh|.inc|.bash|.command|.bats)",
             "shellcheckExternalSources": false,
             "includeAllWorkspaceSymbols": true,
-            "explainshellEndpoint": ""
+            "explainshellEndpoint": "",
+            "shfmt": {
+              "path": "shfmt"
+            }
           }
         }
       }

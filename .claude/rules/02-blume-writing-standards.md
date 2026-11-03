@@ -44,7 +44,7 @@ Sources:
 - Use `sidebar.label` for a short navigation title and `sidebar.hidden: true` to keep a page out of navigation.
 - Use kebab-case filenames. Navigation derives from folder structure plus `meta.ts` files; there is no navigation manifest.
 - Internal links are extensionless and root-relative, such as `/configuration/hints`. `blume validate` proves internal links, anchors, and asset references.
-- Images live under `docs/images/**`, use root-relative `/images/**` paths, and include descriptive alt text.
+- Images live under `docs/public/images/**`, use root-relative `/images/**` paths, and include descriptive alt text. Blume serves root-relative paths only from `docs/public/`.
 - When moving or renaming a page, declare a redirect in the `redirects` key of `docs/blume.config.ts` in the same change.
 - Comparison pages under `docs/comparisons/` must include `Last verified YYYY-MM-DD` for external claims and a `## Sources` section with at least one outbound source link.
 

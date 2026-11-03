@@ -66,12 +66,10 @@ function assertWorkflowBasics(
           allowedActionPatterns.has(`${action}@*`),
         `${file}: third-party action ${action} must be allowlisted in .github/repo-policy.json selectedActions.patterns_allowed`
       );
-      if (action === "actions/checkout") {
-        assert(
-          at(step, "with", "persist-credentials") === false,
-          `${file}: actions/checkout must set with.persist-credentials: false`
-        );
-      }
+      assert(
+        action !== "actions/checkout" || at(step, "with", "persist-credentials") === false,
+        `${file}: actions/checkout must set with.persist-credentials: false`
+      );
     }
   }
 }
@@ -601,8 +599,8 @@ export function check(root = ROOT): void {
   );
   const nodes = jobMatrix(ci, "quality", "node-version");
   assert(
-    [22, 24].every((value) => nodes.includes(value)),
-    `ci.yml quality node-version matrix must include 22 and 24 (got ${JSON.stringify(nodes)})`
+    [22, 24, 26].every((value) => nodes.includes(value)),
+    `ci.yml quality node-version matrix must include 22, 24, and 26 (got ${JSON.stringify(nodes)})`
   );
   const postgres = jobMatrix(ci, "check", "postgres");
   assert(

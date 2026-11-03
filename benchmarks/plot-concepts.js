@@ -160,7 +160,7 @@ const supaschema = renderFlow({
   title: "The supaschema workflow",
 });
 
-const outDir = resolve("docs/images/concepts");
+const outDir = resolve("docs/public/images/concepts");
 await mkdir(outDir, { recursive: true });
 const legacyPath = resolve(outDir, "legacy-flow.svg");
 const supaschemaPath = resolve(outDir, "supaschema-flow.svg");

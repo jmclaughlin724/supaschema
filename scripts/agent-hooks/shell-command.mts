@@ -3,21 +3,23 @@ import { type ParseArgsOptionsConfig, parseArgs } from "node:util";
 import { Minimatch } from "minimatch";
 import {
   type ArithmeticExpression,
-  type AssignmentPrefix,
+  type Assignment,
   type Command,
-  type Node,
+  type CommandArgument,
+  type ParameterExpansionPart,
   type ParsedScript,
   type ParseError,
   parse,
-  type Redirect,
+  type Redirection,
+  type SyntaxNode,
   type TestExpression,
   type Word,
   type WordPart,
 } from "unbash";
 
 export interface ShellInvocation {
-  arguments: Word[];
-  assignments: AssignmentPrefix[];
+  arguments: readonly CommandArgument[];
+  assignments: Assignment[];
   captured: boolean;
   depth: number;
   executable: string | null;
@@ -26,7 +28,7 @@ export interface ShellInvocation {
   nested: boolean;
   node: Command;
   piped: boolean;
-  redirections: Redirect[];
+  redirections: Redirection[];
   source: string;
 }
 
@@ -41,7 +43,7 @@ interface ShellContext {
   depth: number;
   nested: boolean;
   piped: boolean;
-  redirections: Redirect[];
+  redirections: Redirection[];
   source: string;
 }
 
@@ -65,9 +67,12 @@ export function parseShellCommand(source: unknown): ShellAnalysis {
   return { errors: state.errors, invocations: state.invocations, script };
 }
 
-export function staticWordValue(word: Word | null | undefined): StaticValue {
+export function staticWordValue(word: CommandArgument | null | undefined): StaticValue {
   if (!(word && typeof word === "object")) {
     return null;
+  }
+  if (word.type === "Assignment") {
+    return staticAssignmentValue(word);
   }
   const parts = word.parts;
   if (Array.isArray(parts)) {
@@ -76,8 +81,21 @@ export function staticWordValue(word: Word | null | undefined): StaticValue {
   return shellGlobHasMagic(word.value) ? null : word.value;
 }
 
-export function wordText(word: Word | undefined): string {
+export function wordText(word: CommandArgument | undefined): string {
   return typeof word?.text === "string" ? word.text : "";
+}
+
+function staticAssignmentValue(assignment: Assignment): StaticValue {
+  if (assignment.value.type !== "Word") {
+    return null;
+  }
+  const value = staticWordValue(assignment.value);
+  const index = assignment.index === undefined ? "" : staticWordValue(assignment.index);
+  if (value === null || index === null) {
+    return null;
+  }
+  const subscript = assignment.index === undefined ? "" : `[${index}]`;
+  return `${assignment.name}${subscript}${assignment.append ? "+=" : "="}${value}`;
 }
 
 export function executableName(value: string | null | undefined): string {
@@ -89,7 +107,7 @@ export function executableName(value: string | null | undefined): string {
 }
 
 export function parseStaticArguments(
-  words: readonly Word[],
+  words: readonly CommandArgument[],
   options: { options?: ParseArgsOptionsConfig } = {}
 ) {
   const dynamicIndexes = new Set<number>();
@@ -136,15 +154,18 @@ function collectScript(
   }
 }
 
-function visitNode(node: Node | undefined, context: ShellContext, state: ShellState): void {
+function visitNode(node: SyntaxNode | undefined, context: ShellContext, state: ShellState): void {
   if (!(node && typeof node === "object")) {
     return;
   }
   switch (node.type) {
     case "Statement":
+      visitNode(node.command, context, state);
+      break;
+    case "Redirected":
       visitNode(
         node.command,
-        { ...context, redirections: [...context.redirections, ...(node.redirects ?? [])] },
+        { ...context, redirections: [...context.redirections, ...node.redirects] },
         state
       );
       visitRedirects(node.redirects, context, state);
@@ -163,7 +184,12 @@ function visitNode(node: Node | undefined, context: ShellContext, state: ShellSt
     case "If":
       visitNode(node.clause, context, state);
       visitNode(node.then, context, state);
+      visitNodes(node.elif, context, state);
       visitNode(node.else, context, state);
+      break;
+    case "Elif":
+      visitNode(node.clause, context, state);
+      visitNode(node.then, context, state);
       break;
     case "For":
     case "Select":
@@ -183,7 +209,6 @@ function visitNode(node: Node | undefined, context: ShellContext, state: ShellSt
     case "Function":
     case "Coproc":
       visitNode(node.body, context, state);
-      visitRedirects(node.redirects, context, state);
       break;
     case "Subshell":
     case "BraceGroup":
@@ -211,11 +236,12 @@ function visitNode(node: Node | undefined, context: ShellContext, state: ShellSt
 }
 
 function visitCommand(node: Command, context: ShellContext, state: ShellState): void {
+  const assignments = node.prefix.filter((item): item is Assignment => item.type === "Assignment");
   if (state.invocations.length < maxInvocations) {
-    const redirections = [...context.redirections, ...(node.redirects ?? [])];
+    const redirections = [...context.redirections, ...node.redirects];
     state.invocations.push({
-      arguments: node.suffix ?? [],
-      assignments: node.prefix ?? [],
+      arguments: node.args,
+      assignments,
       captured: context.captured,
       depth: context.depth,
       executable: staticWordValue(node.name),
@@ -231,16 +257,30 @@ function visitCommand(node: Command, context: ShellContext, state: ShellState): 
     state.errors.push({ message: "shell invocation limit exceeded", pos: node.pos ?? 0 });
   }
   visitWord(node.name, context, state);
-  for (const assignment of node.prefix ?? []) {
-    visitWord(assignment.value, context, state);
-    visitWords(assignment.array, context, state);
+  for (const assignment of assignments) {
+    visitAssignment(assignment, context, state);
   }
-  visitWords(node.suffix, context, state);
+  for (const argument of node.args) {
+    if (argument.type === "Assignment") {
+      visitAssignment(argument, context, state);
+    } else {
+      visitWord(argument, context, state);
+    }
+  }
   visitRedirects(node.redirects, context, state);
 }
 
+function visitAssignment(assignment: Assignment, context: ShellContext, state: ShellState): void {
+  visitWord(assignment.index, context, state);
+  if (assignment.value.type === "ArrayValue") {
+    visitWords(assignment.value.elements, context, state);
+  } else {
+    visitWord(assignment.value, context, state);
+  }
+}
+
 function visitNodes(
-  nodes: readonly Node[] | undefined,
+  nodes: readonly SyntaxNode[] | undefined,
   context: ShellContext,
   state: ShellState
 ): void {
@@ -279,11 +319,7 @@ function visitWordPart(part: WordPart, context: ShellContext, state: ShellState)
     return;
   }
   if (part.type === "ParameterExpansion") {
-    visitWord(part.operand, context, state);
-    visitWord(part.slice?.offset, context, state);
-    visitWord(part.slice?.length, context, state);
-    visitWord(part.replace?.pattern, context, state);
-    visitWord(part.replace?.replacement, context, state);
+    visitParameterExpansion(part, context, state);
     return;
   }
   if (part.type === "ArithmeticExpansion") {
@@ -292,6 +328,33 @@ function visitWordPart(part: WordPart, context: ShellContext, state: ShellState)
   }
   if (part.type === "CommandExpansion" || part.type === "ProcessSubstitution") {
     visitDeferredScript(part.script, context, state);
+  }
+}
+
+function visitParameterExpansion(
+  part: ParameterExpansionPart,
+  context: ShellContext,
+  state: ShellState
+): void {
+  visitWord(part.index, context, state);
+  const operation = part.operation;
+  switch (operation?.type) {
+    case "Default":
+    case "Remove":
+    case "Transform":
+    case "CaseModification":
+      visitWord(operation.operand, context, state);
+      break;
+    case "Replace":
+      visitWord(operation.pattern, context, state);
+      visitWord(operation.replacement, context, state);
+      break;
+    case "Slice":
+      visitWord(operation.offset, context, state);
+      visitWord(operation.length, context, state);
+      break;
+    default:
+      break;
   }
 }
 
@@ -362,8 +425,9 @@ function visitTestExpression(
       visitWord(expression.right, context, state);
       break;
     case "TestLogical":
-      visitTestExpression(expression.left, context, state);
-      visitTestExpression(expression.right, context, state);
+      for (const operand of expression.operands) {
+        visitTestExpression(operand, context, state);
+      }
       break;
     case "TestNot":
       visitTestExpression(expression.operand, context, state);
@@ -377,13 +441,18 @@ function visitTestExpression(
 }
 
 function visitRedirects(
-  redirects: readonly Redirect[] | undefined,
+  redirects: readonly Redirection[] | undefined,
   context: ShellContext,
   state: ShellState
 ): void {
   for (const redirect of redirects ?? []) {
-    visitWord(redirect.target, context, state);
-    visitWord(redirect.body, context, state);
+    if (redirect.type === "HereDoc") {
+      for (const part of redirect.body.parts ?? []) {
+        visitWordPart(part, context, state);
+      }
+    } else {
+      visitWord(redirect.target, context, state);
+    }
   }
 }
 
@@ -519,7 +588,7 @@ function envOptionWidth(value: string, next: StaticValue | undefined): number {
   return 0;
 }
 
-function wrappedCommandIndex(name: string, words: readonly Word[]): number | null {
+function wrappedCommandIndex(name: string, words: readonly CommandArgument[]): number | null {
   const values = words.map(staticWordValue);
   if (!values.every((value) => value !== null)) {
     return null;

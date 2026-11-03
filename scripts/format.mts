@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOCAL_BIOME_PATHS } from "./lib/repo-files.mts";
+import { existingLocalBiomePaths } from "./lib/repo-files.mts";
 
 const canonicalPathsModule = new URL("../src/paths.ts", import.meta.url);
 const { pathContainsOrEqual } = await import(canonicalPathsModule.href);
@@ -67,7 +67,11 @@ export function validateFormatTargets(
   return targets;
 }
 
-export function main(args = process.argv.slice(2), dependencies = { runNpmScript, runUltracite }) {
+export function main(
+  args = process.argv.slice(2),
+  dependencies = { runNpmScript, runUltracite },
+  localPaths = existingLocalBiomePaths(repositoryRoot)
+) {
   if (args.length > 0) {
     let targets: readonly string[];
     try {
@@ -85,10 +89,12 @@ export function main(args = process.argv.slice(2), dependencies = { runNpmScript
     () => dependencies.runNpmScript("format:json"),
     () => dependencies.runUltracite(["fix", "."], "Git-visible Ultracite fix"),
     () =>
-      dependencies.runUltracite(
-        ["fix", ...LOCAL_BIOME_PATHS, "--vcs-use-ignore-file=false"],
-        "ignored local Ultracite fix"
-      ),
+      localPaths.length === 0
+        ? 0
+        : dependencies.runUltracite(
+            ["fix", ...localPaths, "--vcs-use-ignore-file=false"],
+            "ignored local Ultracite fix"
+          ),
     () => dependencies.runNpmScript("format:md"),
     () => dependencies.runNpmScript("format:toml"),
     () => dependencies.runNpmScript("format:sh"),

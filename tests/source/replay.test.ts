@@ -49,37 +49,6 @@ function table(model: SchemaModel, key: string): SchemaObject | undefined {
   return model.objects.find((object) => object.key === key);
 }
 
-async function expectPolicyReplayMatchesDeclaration(
-  initialPolicy: string,
-  alteration: string,
-  declaredPolicy: string
-): Promise<void> {
-  const history = await extractMigrations([
-    [
-      "20240101000000_alter_policy.sql",
-      `CREATE SCHEMA app;
-CREATE TABLE app.accounts (id integer, active boolean);
-${initialPolicy}
-${alteration}`,
-    ],
-  ]);
-  const declared = await extractDirectory([
-    [
-      "app.sql",
-      `CREATE SCHEMA app;
-CREATE TABLE app.accounts (id integer, active boolean);
-${declaredPolicy}`,
-    ],
-  ]);
-
-  expect(errors(history.diagnostics)).toEqual([]);
-  expect(errors(declared.diagnostics)).toEqual([]);
-  expect(history.fingerprint).toBe(declared.fingerprint);
-  expect(table(history, "policy:app.accounts_update:accounts")?.hash).toBe(
-    table(declared, "policy:app.accounts_update:accounts")?.hash
-  );
-}
-
 function columns(object: SchemaObject | undefined): TableColumn[] {
   const value = object?.metadata.columns;
   return Array.isArray(value) ? value.filter(isTableColumn) : [];
@@ -147,7 +116,9 @@ describe("migrations source replay", () => {
       await readFile(join(fixture, "provenance.json"), "utf8")
     );
     const expectedHashes = fixtureFileHashes(provenance);
-    const expectedSqlFiles = Object.keys(expectedHashes).sort();
+    const expectedSqlFiles = Object.keys(expectedHashes).sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    );
     const actualSqlFiles = (await readdir(fixture)).filter((file) => file.endsWith(".sql")).sort();
     expect(actualSqlFiles).toEqual(expectedSqlFiles);
     for (const file of actualSqlFiles) {
@@ -1732,51 +1703,71 @@ CREATE TABLE app.accounts (id integer);`,
     expect(model.objects.map((object) => object.key)).toEqual(["schema:app", "table:app.accounts"]);
   });
 
-  it("replays ALTER POLICY TO while preserving both predicates", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  it.each([
+    [
+      "TO while preserving both predicates",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO anon
   USING (active)
   WITH CHECK (id > 0);`,
       "ALTER POLICY accounts_update ON app.accounts TO authenticated;",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (active)
-  WITH CHECK (id > 0);`
-    );
-  });
-
-  it("replays ALTER POLICY USING while preserving roles and WITH CHECK", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (id > 0);`,
+    ],
+    [
+      "USING while preserving roles and WITH CHECK",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (true)
   WITH CHECK (active);`,
       "ALTER POLICY accounts_update ON app.accounts USING (id IS NOT NULL);",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
-  WITH CHECK (active);`
-    );
-  });
-
-  it("replays ALTER POLICY WITH CHECK while preserving roles and USING", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (active);`,
+    ],
+    [
+      "WITH CHECK while preserving roles and USING",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
   WITH CHECK (true);`,
       "ALTER POLICY accounts_update ON app.accounts WITH CHECK (active AND id > 0);",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
-  WITH CHECK (active AND id > 0);`
-    );
-  });
-
-  it("replays ALTER POLICY TO PUBLIC while preserving both predicates", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (active AND id > 0);`,
+    ],
+    [
+      "TO PUBLIC while preserving both predicates",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (active)
   WITH CHECK (id > 0);`,
       "ALTER POLICY accounts_update ON app.accounts TO PUBLIC;",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO PUBLIC
   USING (active)
-  WITH CHECK (id > 0);`
+  WITH CHECK (id > 0);`,
+    ],
+  ])("replays ALTER POLICY %s", async (_name, initialPolicy, alteration, declaredPolicy) => {
+    const history = await extractMigrations([
+      [
+        "20240101000000_alter_policy.sql",
+        `CREATE SCHEMA app;
+CREATE TABLE app.accounts (id integer, active boolean);
+${initialPolicy}
+${alteration}`,
+      ],
+    ]);
+    const declared = await extractDirectory([
+      [
+        "app.sql",
+        `CREATE SCHEMA app;
+CREATE TABLE app.accounts (id integer, active boolean);
+${declaredPolicy}`,
+      ],
+    ]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+    expect(table(history, "policy:app.accounts_update:accounts")?.hash).toBe(
+      table(declared, "policy:app.accounts_update:accounts")?.hash
     );
   });
 

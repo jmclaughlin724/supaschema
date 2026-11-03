@@ -20,7 +20,7 @@ The Python side of this repo is a single uv workspace member: `services/agent-mc
 
 ## Layout
 
-- Root `pyproject.toml` is the uv workspace root: `[tool.uv] package = false`, `[tool.uv.workspace] members = ["services/agent-mcp"]`, and `requires-python = ">=3.12,<3.13"`. It owns the shared `[dependency-groups] dev` tools, the `[tool.ruff]`, `[tool.mypy]`, and `[tool.pytest.ini_options]` config, and the pylsp plugin config tables.
+- Root `pyproject.toml` is the uv workspace root: `[tool.uv] package = false`, `[tool.uv.workspace] members = ["services/agent-mcp"]`, and `requires-python = ">=3.14,<3.15"`. It owns the shared `[dependency-groups] dev` tools, the `[tool.ruff]`, `[tool.mypy]`, and `[tool.pytest.ini_options]` config, and the pylsp plugin config tables.
 - `services/agent-mcp/pyproject.toml` owns the runtime package (`fastmcp`, `pydantic`, `pytest-asyncio`) and its `[project.scripts] supaschema-agent-mcp` entrypoint. Application code lives in `services/agent-mcp/supaschema_agent_mcp/`; tests live in `services/agent-mcp/tests/`.
 - `uv.lock` is the single workspace lockfile. After changing any dependency or dev tool, run `uv lock` and commit `uv.lock`. CI runs `uv sync --locked`, which fails on drift.
 

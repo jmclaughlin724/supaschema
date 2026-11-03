@@ -23,8 +23,11 @@ export function check(root = ROOT): void {
     "adapter must allow only auto"
   );
   assert(
-    JSON.stringify(Object.keys(recordOf(at(properties, "sources", "properties"))).sort()) ===
-      JSON.stringify(["from"]),
+    JSON.stringify(
+      Object.keys(recordOf(at(properties, "sources", "properties"))).sort(
+        (left, right) => Number(left > right) - Number(left < right)
+      )
+    ) === JSON.stringify(["from"]),
     "sources must expose only from"
   );
   assert(at(properties, "sources", "additionalProperties") === false, "sources must be strict");

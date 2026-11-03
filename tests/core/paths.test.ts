@@ -54,18 +54,22 @@ describe("path overlap primitives", () => {
   );
 
   it("pathsOverlap is symmetric for arbitrary path pairs", () => {
-    fc.assert(fc.property(relPath, relPath, (a, b) => pathsOverlap(a, b) === pathsOverlap(b, a)));
+    fc.assert(
+      fc.property(relPath, relPath, (a, b) => {
+        expect(pathsOverlap(a, b)).toBe(pathsOverlap(b, a));
+      })
+    );
   });
 
   it("pathsOverlap is invariant under trailing-separator and dot-prefix normalization", () => {
     fc.assert(
       fc.property(relPath, relPath, (a, b) => {
         const base = pathsOverlap(a, b);
-        return (
-          pathsOverlap(`${a}/`, b) === base &&
-          pathsOverlap(a, `${b}/`) === base &&
-          pathsOverlap(`./${a}`, b) === base
-        );
+        expect([
+          pathsOverlap(`${a}/`, b),
+          pathsOverlap(a, `${b}/`),
+          pathsOverlap(`./${a}`, b),
+        ]).toEqual([base, base, base]);
       })
     );
   });

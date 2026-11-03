@@ -19,7 +19,7 @@ export function claimedVerificationDomains(message: unknown): string[] {
       claims.add(domain);
     }
   }
-  return [...claims].sort();
+  return [...claims].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 export function verificationClaimConflict(

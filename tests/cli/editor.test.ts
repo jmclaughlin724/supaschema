@@ -51,7 +51,9 @@ describe("public agent and editor surfaces", () => {
       ".claude/skills/elegant/SKILL.md",
       ".codex/agents/elegant.toml",
     ];
-    expect(ignoredFiles(privateAgentFiles)).toEqual([...privateAgentFiles].sort());
+    expect(ignoredFiles(privateAgentFiles)).toEqual(
+      [...privateAgentFiles].sort((left, right) => Number(left > right) - Number(left < right))
+    );
     expect(stageableFiles([".agents", ".claude", ".codex"])).toEqual([]);
     const privateFiles = [".vscode/settings.json", ".vscode/extensions.json"];
     for (const file of privateFiles) {

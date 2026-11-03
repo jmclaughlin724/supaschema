@@ -9,7 +9,7 @@ import {
 } from "../../actions/run-supaschema-action.mjs";
 import { at } from "../../lib/json.mts";
 import { extractChangelogEntry } from "../../release/changelog-notes.mts";
-import { assert, ok } from "../lib/assertions.mts";
+import { assert, fail, ok } from "../lib/assertions.mts";
 import { ROOT, readJson, readText } from "../lib/repository.mts";
 
 export function check(root = ROOT): void {
@@ -31,7 +31,7 @@ export function check(root = ROOT): void {
   try {
     extractChangelogEntry(changelog, version);
   } catch (error) {
-    assert(false, error instanceof Error ? error.message : String(error));
+    fail(error instanceof Error ? error.message : String(error));
   }
 
   const actionText = readText("action.yml", root);

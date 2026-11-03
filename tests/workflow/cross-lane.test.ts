@@ -1,5 +1,5 @@
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
 import { extractSourceModel } from "../../src/source/extract.js";
@@ -85,13 +85,13 @@ async function collectFalseChanges(
 }
 
 describe.skipIf(!databaseUrl)("cross-lane identity parity", () => {
-  it("diffs the basic tree against its own live catalog without false changes", {
+  test("diffs the basic tree against its own live catalog without false changes", {
     timeout: 30_000,
   }, async () => {
     expect(await collectFalseChanges("tests/fixtures/basic/to")).toEqual([]);
   });
 
-  it("diffs the hard-case parity tree against its own live catalog without false changes", {
+  test("diffs the hard-case parity tree against its own live catalog without false changes", {
     timeout: 30_000,
   }, async () => {
     const falseChanges = await collectFalseChanges("tests/fixtures/parity/tree", [
@@ -100,7 +100,7 @@ describe.skipIf(!databaseUrl)("cross-lane identity parity", () => {
     expect(falseChanges).toEqual([]);
   });
 
-  it("diffs hostile quoted identifiers and apostrophes without false changes", {
+  test("diffs hostile quoted identifiers and apostrophes without false changes", {
     timeout: 30_000,
   }, async () => {
     expect(await collectFalseChanges("tests/fixtures/parity/hostile")).toEqual([]);

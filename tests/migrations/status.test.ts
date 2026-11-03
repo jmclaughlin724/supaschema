@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { lineageLine } from "../../src/migrations/lineage.js";
 import {
@@ -95,7 +95,7 @@ describe("migrations status (disk only)", () => {
 });
 
 describe.skipIf(!databaseUrl)("migrations status (against a target)", () => {
-  it("classifies applied, pending, ghost, and out-of-order versions", {
+  test("classifies applied, pending, ghost, and out-of-order versions", {
     timeout: 30_000,
   }, async () => {
     const admin = new Client({ connectionString: databaseUrl });
@@ -146,7 +146,7 @@ describe.skipIf(!databaseUrl)("migrations status (against a target)", () => {
     }
   });
 
-  it("reports a missing history table as an error", async () => {
+  test("reports a missing history table as an error", async () => {
     const { diagnostics } = await migrationsStatus({
       databaseUrl,
       directory: await migrationDir(),

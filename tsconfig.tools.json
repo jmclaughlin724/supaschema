@@ -19,6 +19,7 @@
     "dist",
     "docs/.blume",
     "docs/.blume-verify",
+    "docs/blume.config.ts",
     "docs/dist",
     "docs/node_modules",
     "node_modules"

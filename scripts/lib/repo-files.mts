@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
 export const LOCAL_REPOSITORY_FILES = [
@@ -65,6 +65,10 @@ export const REPOSITORY_DENY_SEGMENTS = new Set([
 ]);
 
 export const LOCAL_BIOME_PATHS = [".claude/skills", ".claude/settings.local.json", ".vscode"];
+
+export function existingLocalBiomePaths(root: string): string[] {
+  return LOCAL_BIOME_PATHS.filter((path) => existsSync(resolve(root, path)));
+}
 
 export function isRepositoryContextPath(file: string): boolean {
   if (LOCAL_REPOSITORY_FILES.includes(file)) {

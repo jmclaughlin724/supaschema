@@ -9,7 +9,7 @@ import {
   staticWordValue,
 } from "../../agent-hooks/shell-command.mts";
 import { arrayOf, at, type JsonRecord, recordOf, stringAt, stringsOf } from "../../lib/json.mts";
-import { assert, ok } from "../lib/assertions.mts";
+import { assert, fail, ok } from "../lib/assertions.mts";
 import { exists, gitFiles, ROOT, readJson, readText } from "../lib/repository.mts";
 import { forEachNode, parseScript, ts } from "../lib/typescript-ast.mts";
 
@@ -56,6 +56,7 @@ const expectedBiomeExclusions = [
   "!agent-bundle",
   "!**/*.astro",
   "!tests/fixtures/sample-project/supabase/functions",
+  "!tests/fixtures/agent-hooks/retired-sync-llm-on-claude-surface-change.mjs",
   "!.agents",
   "!.codex",
 ];
@@ -225,12 +226,12 @@ function assertUltraciteEntryPoints(scripts: JsonRecord, lefthook: unknown, root
   assert(scripts["lint:doctor"] === "ultracite doctor", "lint:doctor must run Ultracite doctor");
   assert(
     stringAt(scripts, "bench:plot:headtohead")?.endsWith(
-      " && npm run format -- docs/images/benchmarks"
+      " && npm run format -- docs/public/images/benchmarks"
     ),
     "bench:plot:headtohead must format generated benchmark SVGs through the scoped npm wrapper"
   );
   assert(
-    stringAt(scripts, "diagrams")?.endsWith(" && npm run format -- docs/images/concepts"),
+    stringAt(scripts, "diagrams")?.endsWith(" && npm run format -- docs/public/images/concepts"),
     "diagrams must format generated concept SVGs through the scoped npm wrapper"
   );
 
@@ -292,7 +293,14 @@ function assertBiomeLanguageSurface(biome: unknown): void {
   );
   const exclusions = includes.filter((include) => include.startsWith("!"));
   assert(
-    JSON.stringify([...exclusions].sort()) === JSON.stringify([...expectedBiomeExclusions].sort()),
+    JSON.stringify(
+      [...exclusions].sort((left, right) => Number(left > right) - Number(left < right))
+    ) ===
+      JSON.stringify(
+        [...expectedBiomeExclusions].sort(
+          (left, right) => Number(left > right) - Number(left < right)
+        )
+      ),
     "biome.jsonc exclusions must match the exact reviewed generated, state, nested-worktree, and extracted-workflow boundary"
   );
   assert(
@@ -323,7 +331,7 @@ function assertNoDisabledBiomeRules(
       if (allowedDisabled.has(nextPath)) {
         continue;
       }
-      assert(false, `biome.jsonc must not disable ${nextPath}`);
+      fail(`biome.jsonc must not disable ${nextPath}`);
     }
     if (child && typeof child === "object") {
       assertNoDisabledBiomeRules(child, nextPath, allowedDisabled);
@@ -660,12 +668,10 @@ export function check(root = ROOT): void {
     (candidate) => isJavascriptSourceFile(candidate) && exists(candidate, root)
   )) {
     const flags = moduleSpecifierFlags(file, root);
-    if (file.endsWith(".ts")) {
-      assert(
-        !flags.relativeTs,
-        `${file} must use emitted-runtime .js specifiers for relative imports`
-      );
-    }
+    assert(
+      !(file.endsWith(".ts") && flags.relativeTs),
+      `${file} must use emitted-runtime .js specifiers for relative imports`
+    );
     assert(
       !flags.generatedDist,
       `${file} must not import generated dist output from active source`

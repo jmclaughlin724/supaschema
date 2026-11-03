@@ -1,7 +1,7 @@
 # supaschema
 
 <p align="center">
-  <img src="docs/images/brand/supaschema-logo-readme.png" alt="supaschema logo" width="720">
+  <img src="docs/public/images/brand/supaschema-logo-readme.png" alt="supaschema logo" width="720">
 </p>
 
 [![CI](https://github.com/jmclaughlin724/supaschema/actions/workflows/ci.yml/badge.svg)](https://github.com/jmclaughlin724/supaschema/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/supaschema)](https://www.npmjs.com/package/supaschema) [![npm downloads](https://img.shields.io/npm/dm/supaschema)](https://www.npmjs.com/package/supaschema) [![node](https://img.shields.io/node/v/supaschema)](https://github.com/jmclaughlin724/supaschema/blob/main/package.json) [![license](https://img.shields.io/npm/l/supaschema)](https://github.com/jmclaughlin724/supaschema/blob/main/LICENSE) [![codecov](https://codecov.io/gh/jmclaughlin724/supaschema/branch/main/graph/badge.svg)](https://codecov.io/gh/jmclaughlin724/supaschema) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jmclaughlin724/supaschema/badge)](https://scorecard.dev/viewer/?uri=github.com/jmclaughlin724/supaschema) [![install size](https://packagephobia.com/badge?p=supaschema)](https://packagephobia.com/result?p=supaschema)
@@ -18,7 +18,7 @@ Free and open source under MIT. Install the package, run `supaschema init`, and 
 supaschema sync  # diff, check, types, stage, safety, apply/dry-run, reconcile
 ```
 
-![supaschema vs diff engines at 1,000 tables: median diff latency bars](docs/images/benchmarks/head-to-head-xl-bars.svg)
+![supaschema vs diff engines at 1,000 tables: median diff latency bars](docs/public/images/benchmarks/head-to-head-xl-bars.svg)
 
 ## Why supaschema
 

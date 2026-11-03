@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AssignmentPrefix, Word } from "unbash";
+import type { AssignmentPrefix, CommandArgument } from "unbash";
 import type { HookPayload } from "../../../scripts/agent-hooks/hook-runtime.mts";
 import {
   executableName,
@@ -79,7 +79,7 @@ function collectAssignmentSecretHits(
   hits: string[]
 ): void {
   for (const assignment of assignments) {
-    const value = staticWordValue(assignment.value);
+    const value = assignment.value.type === "Word" ? staticWordValue(assignment.value) : null;
     if (
       typeof assignment.name === "string" &&
       sensitiveName(assignment.name) &&
@@ -288,7 +288,10 @@ function checkRecursiveForcedDeletion(
   return allowResult();
 }
 
-function deletionTargetInterpretations(word: Word, escapeProcessedTarget: string): string[] {
+function deletionTargetInterpretations(
+  word: CommandArgument,
+  escapeProcessedTarget: string
+): string[] {
   const literalSource = wordText(word);
   return literalSource && literalSource !== escapeProcessedTarget
     ? [escapeProcessedTarget, literalSource]

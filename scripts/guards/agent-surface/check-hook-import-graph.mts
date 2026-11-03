@@ -82,7 +82,7 @@ function importSpecifiers(file: string, root: string): string[] {
       }
     }
   });
-  return [...specifiers].sort();
+  return [...specifiers].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 function literalModuleSpecifier(node: TypeScript.Node): string | undefined {
@@ -119,8 +119,11 @@ export function hookImportGraph(root = ROOT): HookImportEdge[] {
     }
     visited.add(file);
     for (const specifier of importSpecifiers(file, root)) {
+      assert(
+        !specifier.startsWith("node:") || isBuiltin(specifier),
+        `${file} imports unknown Node builtin ${specifier}`
+      );
       if (specifier.startsWith("node:")) {
-        assert(isBuiltin(specifier), `${file} imports unknown Node builtin ${specifier}`);
         edges.push({ file, kind: "builtin", specifier });
         continue;
       }
@@ -195,7 +198,7 @@ export function reachableHookDependencies(
       pending.push(target);
     }
   }
-  return [...reachable].sort();
+  return [...reachable].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 export function check(root = ROOT): void {
