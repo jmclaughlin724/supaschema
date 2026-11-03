@@ -26,14 +26,6 @@ args = [
 default_tools_approval_mode = "approve"
 startup_timeout_sec = 20.0
 
-[mcp_servers.lsp-soleaux]
-command = "bun"
-args = ["/Users/johnmclaughlin/projects/lsp-soleaux/index.ts"]
-
-[mcp_servers.lsp-soleaux.env]
-LSP_SOLEAUX_CONFIG_PATH = "/Users/johnmclaughlin/projects/supaschema/lsp-soleaux.json"
-LSP_SOLEAUX_CATALOG = "research"
-
 [mcp_servers.context7]
 enabled = true
 required = false
