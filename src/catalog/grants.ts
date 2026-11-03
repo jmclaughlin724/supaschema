@@ -357,6 +357,30 @@ export async function collectGrants(pool: CatalogQuery): Promise<SchemaObject[]>
   return objects;
 }
 
+export async function collectRoutineExecuteGrantees(
+  pool: CatalogQuery
+): Promise<Map<string, Set<string>>> {
+  const rows = await pool.query(`
+    select n.nspname as schema, p.proname as name,
+      oidvectortypes(p.proargtypes) as args,
+      array_agg(case when acl.grantee = 0 then 'PUBLIC' else pg_get_userbyid(acl.grantee) end) as grantees
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace,
+    lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) as acl
+    where acl.privilege_type = 'EXECUTE'
+      and acl.grantee <> p.proowner
+      and ${catalogSchemaFilter(pool)}
+      and ${notExtensionMember("p", "pg_proc")}
+    group by n.nspname, p.proname, args
+  `);
+  return new Map(
+    rows.rows.map((row) => [
+      `${text(row.schema)}.${text(row.name)}(${text(row.args)})`,
+      new Set(textArray(row.grantees)),
+    ])
+  );
+}
+
 export async function collectDefaultPrivileges(pool: CatalogQuery): Promise<SchemaObject[]> {
   return [
     ...(await collectGrantedDefaultPrivileges(pool)),

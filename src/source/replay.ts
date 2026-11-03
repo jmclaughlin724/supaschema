@@ -24,6 +24,7 @@ import {
   isGrantForTargets,
   relationOwnerKinds,
 } from "../sql/dependents.js";
+import { doBlockBody, doBlockDdlFragments } from "../sql/do-block.js";
 import { extractObjectsFromSql } from "../sql/extract.js";
 import { finalizeObjects } from "../sql/facts.js";
 import { objectKey } from "../sql/identifiers.js";
@@ -77,11 +78,6 @@ interface DropTarget {
 }
 
 type MutableRecord = object;
-
-interface DoBlockDdlFragment {
-  idempotentCreate: boolean;
-  sql: string;
-}
 
 const extractedStatementTags = new Set([
   "AlterDefaultPrivilegesStmt",
@@ -154,15 +150,6 @@ const typegenNeutralStatementTags = new Set([
   "VariableSetStmt",
 ]);
 
-const digitStart = "0".charCodeAt(0);
-const digitEnd = "9".charCodeAt(0);
-const uppercaseStart = "A".charCodeAt(0);
-const uppercaseEnd = "Z".charCodeAt(0);
-const underscore = "_".charCodeAt(0);
-const lowercaseStart = "a".charCodeAt(0);
-const lowercaseEnd = "z".charCodeAt(0);
-const dollarSign = "$".charCodeAt(0);
-
 export async function reconstructModelFromMigrations(
   directory: string,
   source: string,
@@ -190,7 +177,10 @@ export async function reconstructModelFromMigrations(
   }
 
   const objects = new Map<string, SchemaObject>();
-  const context: ReplayContext = { config, normalize: config.normalize === "deparse" };
+  const context: ReplayContext = {
+    config,
+    normalize: config.normalize === "deparse",
+  };
   let ordinal = 0;
   for (const file of files) {
     const result = await replayMigrationFile(file, objects, context, ordinal);
@@ -671,7 +661,9 @@ async function applyAlterViewOptions(
     );
   }
   const next = makeObject(ref, sql, target.ordinal, target.file);
-  const diagnostics = await finalizeObjects([next], { normalize: context.normalize });
+  const diagnostics = await finalizeObjects([next], {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: undefined };
   }
@@ -738,7 +730,9 @@ async function applyAlterPolicy(
     );
   }
   const next = makeObject(ref, sql, target.ordinal, target.file);
-  const diagnostics = await finalizeObjects([next], { normalize: context.normalize });
+  const diagnostics = await finalizeObjects([next], {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: undefined };
   }
@@ -879,7 +873,9 @@ async function applyAlterTableCommand(options: {
     );
   }
 
-  const diagnostics = await finalizeObjects(extracted, { normalize: options.context.normalize });
+  const diagnostics = await finalizeObjects(extracted, {
+    normalize: options.context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: options.ordinal };
   }
@@ -1082,7 +1078,9 @@ async function applyValidateConstraint(
     );
   }
   const next = makeObject(ref, sql, target.ordinal, target.file, structuredClone(target.metadata));
-  const diagnostics = await finalizeObjects([next], { normalize: context.normalize });
+  const diagnostics = await finalizeObjects([next], {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: undefined };
   }
@@ -1166,7 +1164,9 @@ async function applyConstraintUsingIndex(
   if (!extracted || extracted.length === 0) {
     return unsupportedStatement(statement, file, "backing index constraint could not be modeled");
   }
-  const diagnostics = await finalizeObjects(extracted, { normalize: context.normalize });
+  const diagnostics = await finalizeObjects(extracted, {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: ordinal };
   }
@@ -1300,7 +1300,9 @@ async function applyAddColumn(
   if (extracted.length === 0) {
     return emptyResult();
   }
-  const diagnostics = await finalizeObjects(extracted, { normalize: context.normalize });
+  const diagnostics = await finalizeObjects(extracted, {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: ordinal };
   }
@@ -1352,7 +1354,10 @@ function applyDropColumn(
   }
   updateTableShape(
     table,
-    { ...shape, columns: shapeColumns.filter((column) => column.name !== columnName) },
+    {
+      ...shape,
+      columns: shapeColumns.filter((column) => column.name !== columnName),
+    },
     statement.text
   );
   table.metadata.columns = tableMetadataColumns(table).filter(
@@ -1731,7 +1736,11 @@ function applyDrop(
       );
     }
   }
-  return { diagnostics, hardFail: hasErrors(diagnostics), nextOrdinal: undefined };
+  return {
+    diagnostics,
+    hardFail: hasErrors(diagnostics),
+    nextOrdinal: undefined,
+  };
 }
 
 async function applyNormalizedAmendment(
@@ -1805,7 +1814,12 @@ function tableShapeColumns(shape: Record<string, unknown> | undefined): ColumnSh
     ) {
       return;
     }
-    output.push({ ...column, name: column.name, notNull: column.notNull, type: column.type });
+    output.push({
+      ...column,
+      name: column.name,
+      notNull: column.notNull,
+      type: column.type,
+    });
   }
   return output;
 }
@@ -2550,7 +2564,9 @@ async function applyIndexRename(
     target[1].file,
     structuredClone(target[1].metadata)
   );
-  const diagnostics = await finalizeObjects([next], { normalize: context.normalize });
+  const diagnostics = await finalizeObjects([next], {
+    normalize: context.normalize,
+  });
   if (hasErrors(diagnostics)) {
     return { diagnostics, hardFail: true, nextOrdinal: undefined };
   }
@@ -2562,6 +2578,9 @@ async function applyIndexRename(
 function dropTargets(removeType: string | undefined, node: AstNode): DropTarget[] {
   if (removeType === "OBJECT_TABLE") {
     return nameDropTargets(node, "table");
+  }
+  if (removeType === "OBJECT_FDW") {
+    return nameDropTargets(node, "foreign-data-wrapper");
   }
   if (removeType === "OBJECT_FOREIGN_TABLE") {
     return nameDropTargets(node, "foreign-table");
@@ -2628,7 +2647,7 @@ function dropTargets(removeType: string | undefined, node: AstNode): DropTarget[
 function nameDropTargets(node: AstNode, kind: ObjectKind): DropTarget[] {
   return readArray(node.objects).flatMap<DropTarget>((object) => {
     const direct = stringNode(object);
-    if (direct && (kind === "schema" || kind === "extension")) {
+    if (direct && (kind === "schema" || kind === "extension" || kind === "foreign-data-wrapper")) {
       return [{ display: direct, refs: [{ kind, name: direct }] }];
     }
     const name = qualifiedName(object);
@@ -2653,7 +2672,10 @@ function tableScopedDropTargets(node: AstNode, kind: "policy" | "trigger"): Drop
     const ref: ObjectRef =
       schema === undefined ? { kind, name, table } : { kind, name, schema, table };
     return [
-      { display: `${schema === undefined ? table : `${schema}.${table}`}.${name}`, refs: [ref] },
+      {
+        display: `${schema === undefined ? table : `${schema}.${table}`}.${name}`,
+        refs: [ref],
+      },
     ];
   });
 }
@@ -2844,220 +2866,6 @@ function stringNode(value: unknown): string | undefined {
     return direct;
   }
   return readString(asRecord(record?.String)?.sval);
-}
-
-function doBlockBody(node: AstNode): string | undefined {
-  for (const item of readArray(node.args)) {
-    const def = asRecord(asRecord(item)?.DefElem);
-    if (readString(def?.defname) === "as") {
-      return stringNode(def?.arg);
-    }
-  }
-}
-
-function doBlockDdlFragments(body: string): DoBlockDdlFragment[] {
-  const fragments: DoBlockDdlFragment[] = [];
-  let idempotentGuardDepth = 0;
-  for (const statement of splitDoBlockStatements(body)) {
-    const tokens = tokenSpans(statement);
-    const startTokenIndex = tokens.findIndex((token) => doBlockDdlStartTokens.has(token.text));
-    const localGuard = isIdempotentGuard(tokens, startTokenIndex);
-    const fragment = doBlockDdlFragment(
-      statement,
-      tokens,
-      startTokenIndex,
-      localGuard || idempotentGuardDepth > 0
-    );
-    if (fragment === undefined) {
-      if (isEndIfStatement(tokens)) {
-        idempotentGuardDepth = Math.max(0, idempotentGuardDepth - 1);
-      }
-      continue;
-    }
-    fragments.push(fragment);
-    if (localGuard) {
-      idempotentGuardDepth += 1;
-    }
-    if (isEndIfStatement(tokens)) {
-      idempotentGuardDepth = Math.max(0, idempotentGuardDepth - 1);
-    }
-  }
-  return fragments;
-}
-
-const doBlockDdlStartTokens = new Set(["alter", "comment", "create", "drop", "grant", "revoke"]);
-
-function doBlockDdlFragment(
-  statement: string,
-  tokens: { end: number; start: number; text: string }[],
-  startTokenIndex: number,
-  idempotentCreate: boolean
-): DoBlockDdlFragment | undefined {
-  const start = tokens[startTokenIndex]?.start;
-  if (start === undefined) {
-    return;
-  }
-  const sql = statement.slice(start).trim();
-  if (sql.length === 0) {
-    return;
-  }
-  return {
-    idempotentCreate,
-    sql,
-  };
-}
-
-function isIdempotentGuard(tokens: { text: string }[], startTokenIndex: number): boolean {
-  if (startTokenIndex <= 0) {
-    return false;
-  }
-  const guardTokens = tokens.slice(0, startTokenIndex).map((token) => token.text);
-  return (
-    guardTokens.includes("if") && guardTokens.includes("not") && guardTokens.includes("exists")
-  );
-}
-
-function isEndIfStatement(tokens: { text: string }[]): boolean {
-  return tokens[0]?.text === "end" && tokens[1]?.text === "if";
-}
-
-function splitDoBlockStatements(body: string): string[] {
-  const statements: string[] = [];
-  let start = 0;
-  let index = 0;
-  while (index < body.length) {
-    const char = body[index] ?? "";
-    const skipped = skipNonCode(body, index);
-    if (skipped !== undefined) {
-      index = skipped;
-      continue;
-    }
-    if (char === ";") {
-      statements.push(body.slice(start, index));
-      start = index + 1;
-    }
-    index += 1;
-  }
-  statements.push(body.slice(start));
-  return statements;
-}
-
-function tokenSpans(sql: string): { end: number; start: number; text: string }[] {
-  const tokens: { end: number; start: number; text: string }[] = [];
-  let index = 0;
-  while (index < sql.length) {
-    const skipped = skipNonCode(sql, index);
-    if (skipped !== undefined) {
-      index = skipped;
-      continue;
-    }
-    const char = sql[index] ?? "";
-    if (isIdentifierStart(char)) {
-      const start = index;
-      index += 1;
-      while (index < sql.length && isIdentifierPart(sql[index] ?? "")) {
-        index += 1;
-      }
-      tokens.push({ end: index, start, text: sql.slice(start, index).toLowerCase() });
-      continue;
-    }
-    index += 1;
-  }
-  return tokens;
-}
-
-function skipNonCode(sql: string, index: number): number | undefined {
-  const char = sql[index] ?? "";
-  if (char === "'") {
-    return skipSingleQuoted(sql, index);
-  }
-  if (char === "$") {
-    return skipDollarQuoted(sql, index);
-  }
-  if (char === "-" && sql[index + 1] === "-") {
-    return skipLineComment(sql, index);
-  }
-  if (char === "/" && sql[index + 1] === "*") {
-    return skipBlockComment(sql, index);
-  }
-}
-
-function skipSingleQuoted(sql: string, start: number): number {
-  let index = start + 1;
-  while (index < sql.length) {
-    if (sql[index] === "'" && sql[index + 1] === "'") {
-      index += 2;
-      continue;
-    }
-    if (sql[index] === "'") {
-      return index + 1;
-    }
-    index += 1;
-  }
-  return sql.length;
-}
-
-function skipDollarQuoted(sql: string, start: number): number | undefined {
-  const tagEnd = sql.indexOf("$", start + 1);
-  if (tagEnd === -1) {
-    return;
-  }
-  const tag = sql.slice(start, tagEnd + 1);
-  if (!isDollarQuoteTag(tag)) {
-    return;
-  }
-  const end = sql.indexOf(tag, tagEnd + 1);
-  return end === -1 ? sql.length : end + tag.length;
-}
-
-function skipLineComment(sql: string, start: number): number {
-  const end = sql.indexOf("\n", start + 2);
-  return end === -1 ? sql.length : end + 1;
-}
-
-function skipBlockComment(sql: string, start: number): number {
-  const end = sql.indexOf("*/", start + 2);
-  return end === -1 ? sql.length : end + 2;
-}
-
-function isIdentifierStart(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return code === underscore || isAsciiLetter(code);
-}
-
-function isIdentifierPart(char: string): boolean {
-  const code = char.charCodeAt(0);
-  return (
-    code === dollarSign ||
-    code === underscore ||
-    isAsciiLetter(code) ||
-    (code >= digitStart && code <= digitEnd)
-  );
-}
-
-function isDollarQuoteTag(tag: string): boolean {
-  if (tag === "$") {
-    return true;
-  }
-  if (tag.length < 3 || tag.charCodeAt(0) !== dollarSign || tag.at(-1) !== "$") {
-    return false;
-  }
-  if (!isIdentifierStart(tag[1] ?? "")) {
-    return false;
-  }
-  for (let index = 2; index < tag.length - 1; index += 1) {
-    if (!isIdentifierPart(tag[index] ?? "")) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function isAsciiLetter(code: number): boolean {
-  return (
-    (code >= uppercaseStart && code <= uppercaseEnd) ||
-    (code >= lowercaseStart && code <= lowercaseEnd)
-  );
 }
 
 function replayExtractionDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {

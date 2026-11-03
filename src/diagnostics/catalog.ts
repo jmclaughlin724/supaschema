@@ -174,6 +174,8 @@ const diagnosticSummaries: Record<string, string> = {
     "A routine with unproven dependencies blocks relation or type changes until the dependency proof is structural.",
   SUPA_ROUTINE_DYNAMIC_SQL_DEPENDENCY_UNKNOWN:
     "A PL/pgSQL routine contains dynamic SQL whose relation and column dependencies cannot be proven statically.",
+  SUPA_ROUTINE_PRIVILEGE_DRIFT:
+    "diff --routine-privilege-drift found a grantee that still holds EXECUTE on a routine in the applied database although the declarative schema revokes it; the plan re-applies the declared REVOKE.",
   SUPA_RULE_DESTRUCTIVE_OP:
     "A destructive operation will run in this migration; review it for data loss and lock impact before deploy.",
   SUPA_RULE_EXPOSED_TABLE_WITHOUT_RLS:

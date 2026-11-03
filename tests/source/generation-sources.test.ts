@@ -154,6 +154,7 @@ async function runGenerationCommand({
     configPath: () => undefined,
     loadCliConfig: () => Promise.resolve(config),
     printDiagnostics: (items) => diagnostics.push(...items),
+    resolveCliDatabaseUrl: () => Promise.resolve(undefined),
   });
   const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);

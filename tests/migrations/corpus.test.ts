@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import { resolveConfig } from "../../src/config/schema.js";
 import { readMigrationContext } from "../../src/migrations/context.js";
 import { buildSchemaDiffPlan } from "../../src/pipeline/diff.js";
+import { planSchemaDiff } from "../../src/planner/schema.js";
 import { renderMigration } from "../../src/render/migration.js";
+import { extractSourceModel } from "../../src/source/extract.js";
 
 describe("migration-derived source corpus", () => {
   it("uses existing migrations to release reviewed column drops", async () => {
@@ -19,7 +21,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       schema: "app",
@@ -53,7 +58,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       schema: "app",
@@ -65,12 +73,126 @@ describe("migration-derived source corpus", () => {
     );
   });
 
-  it("still blocks column drops when existing migrations do not declare them", async () => {
+  it("reapplies retained PUBLIC revokes after dropping and recreating a function", async () => {
+    const root = await migrationCorpusFixture({ migrationSql: "" });
+    await writeFile(
+      join(root, "to", "schema.sql"),
+      `
+        CREATE SCHEMA app;
+        CREATE TABLE app.credentials (
+          id uuid PRIMARY KEY,
+          encrypted_value bytea
+        );
+        CREATE FUNCTION app.legacy_secret(p_ciphertext bytea)
+        RETURNS bytea
+        LANGUAGE sql
+        AS $$ SELECT p_ciphertext $$;
+        REVOKE ALL ON FUNCTION app.legacy_secret(p_ciphertext bytea) FROM PUBLIC;
+      `
+    );
+
+    const plan = await buildSchemaDiffPlan({
+      checkMigrationBaseline: false,
+      config: resolveConfig({
+        hints: { destructive: ["function:app.legacy_secret(bytea)"] },
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
+      cwd: root,
+      from: "dir:from",
+      schema: "app",
+      to: "dir:to",
+    });
+
+    const sql = renderMigration(plan, { includeHeader: false });
+    const drop = sql.indexOf('DROP FUNCTION IF EXISTS "app"."legacy_secret"');
+    const create = sql.indexOf("CREATE OR REPLACE FUNCTION app.legacy_secret");
+    const revoke = sql.indexOf('REVOKE ALL ON FUNCTION "app"."legacy_secret"');
+    expect(drop).toBeGreaterThanOrEqual(0);
+    expect(create).toBeGreaterThan(drop);
+    expect(revoke).toBeGreaterThan(create);
+    expect(sql.split("REVOKE ALL ON FUNCTION")).toHaveLength(2);
+  });
+
+  it("re-applies only declared revokes whose grantee still holds EXECUTE after a drop and recreate lost them", async () => {
+    const root = await mkdtemp(join(tmpdir(), "supa-routine-privilege-drift-"));
+    await writeFile(
+      join(root, "schema.sql"),
+      `
+        CREATE SCHEMA app;
+        CREATE FUNCTION app.store_secret(p_id uuid, p_at timestamptz)
+        RETURNS uuid
+        LANGUAGE sql
+        AS $$ SELECT p_id $$;
+        REVOKE ALL ON FUNCTION app.store_secret(p_id uuid, p_at timestamptz) FROM PUBLIC, anon;
+        GRANT EXECUTE ON FUNCTION app.store_secret(p_id uuid, p_at timestamptz) TO service_role;
+        CREATE FUNCTION app.public_ping() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
+        CREATE FUNCTION app.revoked_ping() RETURNS integer LANGUAGE sql AS $$ SELECT 1 $$;
+        REVOKE ALL ON FUNCTION app.revoked_ping() FROM PUBLIC;
+      `
+    );
+    const lineageBaseline = await extractSourceModel(`dir:${root}`);
+    const appliedRoutineExecuteGrantees = new Map([
+      ["app.store_secret(uuid, timestamp with time zone)", new Set(["PUBLIC", "service_role"])],
+      ["app.public_ping()", new Set(["PUBLIC"])],
+    ]);
+
+    expect(planSchemaDiff(lineageBaseline, lineageBaseline).operations).toEqual([]);
+    const plan = planSchemaDiff(lineageBaseline, lineageBaseline, {
+      appliedRoutineExecuteGrantees,
+    });
+
+    const revokeKey =
+      "grant:app.revoke:function:app.store_secret(uuid, timestamp with time zone):PUBLIC";
+    expect(plan.operations.map((operation) => [operation.kind, operation.key])).toEqual([
+      ["create", revokeKey],
+    ]);
+    expect(plan.diagnostics.filter((item) => item.code === "SUPA_ROUTINE_PRIVILEGE_DRIFT")).toEqual(
+      [
+        expect.objectContaining({
+          ref: expect.objectContaining({ kind: "grant" }),
+          severity: "warning",
+        }),
+      ]
+    );
+    expect(plan.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+    const sql = renderMigration(plan, { includeHeader: false });
+    expect(sql).toContain(
+      'REVOKE ALL ON FUNCTION "app"."store_secret"(uuid, timestamp with time zone) FROM PUBLIC'
+    );
+    expect(sql.split("REVOKE ")).toHaveLength(2);
+    expect(sql).not.toContain("service_role");
+    expect(sql).not.toContain("anon");
+  });
+
+  it("blocks the plan when the applied routine privilege database cannot be read", async () => {
     const root = await migrationCorpusFixture({ migrationSql: "" });
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
       config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      cwd: root,
+      from: "dir:from",
+      routinePrivilegeDatabaseUrl: "postgresql://supaschema@127.0.0.1:1/unreachable",
+      schema: "app",
+      to: "dir:to",
+    });
+
+    expect(plan.operations).toEqual([]);
+    expect(plan.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "SUPA_CATALOG_EXTRACT_FAILED", severity: "error" })
+    );
+  });
+
+  it("still blocks column drops when existing migrations do not declare them", async () => {
+    const root = await migrationCorpusFixture({ migrationSql: "" });
+
+    const plan = await buildSchemaDiffPlan({
+      checkMigrationBaseline: false,
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       schema: "app",
@@ -89,7 +211,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       schema: "app",
@@ -116,7 +241,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       schema: "app",
@@ -138,7 +266,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       migrationsDir: "selected-migrations",
@@ -153,7 +284,9 @@ describe("migration-derived source corpus", () => {
       plan.operations.find((operation) => operation.key === "table:app.credentials")
     ).toMatchObject({
       blocked: false,
-      metadata: expect.objectContaining({ destructiveDisposition: "migration-intent" }),
+      metadata: expect.objectContaining({
+        destructiveDisposition: "migration-intent",
+      }),
     });
   });
 
@@ -165,7 +298,10 @@ describe("migration-derived source corpus", () => {
 
     const plan = await buildSchemaDiffPlan({
       checkMigrationBaseline: false,
-      config: resolveConfig({ migrationsDir: "migrations", schemaPaths: ["to"] }),
+      config: resolveConfig({
+        migrationsDir: "migrations",
+        schemaPaths: ["to"],
+      }),
       cwd: root,
       from: "dir:from",
       migrationsDir: "selected-migrations",

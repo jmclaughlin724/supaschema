@@ -9,10 +9,14 @@ import { overlayRetainedSchemas, retainCatalogOverlayObjects } from "../sql/owne
 import { policyMetadataFromSql } from "../sql/policies.js";
 import { rlsStateSql } from "../sql/rls.js";
 import { makeObject } from "../sql/statements.js";
-import type { SchemaModel, SchemaObject } from "../types.js";
+import type { Diagnostic, SchemaModel, SchemaObject } from "../types.js";
 import { collectComments } from "./comments.js";
 import { collectForeignObjects } from "./foreign.js";
-import { collectDefaultPrivileges, collectGrants } from "./grants.js";
+import {
+  collectDefaultPrivileges,
+  collectGrants,
+  collectRoutineExecuteGrantees,
+} from "./grants.js";
 import {
   type CatalogQuery,
   catalogSchemaFilter,
@@ -32,15 +36,18 @@ export interface ExtractCatalogOptions {
 
 type CatalogPool = Pick<Pool, "query"> & Pick<CatalogQuery, "schemaFilter">;
 
-export async function extractCatalogModel(options: ExtractCatalogOptions): Promise<SchemaModel> {
-  const config = resolveConfig(options.config);
-  const overlaySchemas = overlayRetainedSchemas(config);
+function openCatalogPool(
+  databaseUrl: string,
+  config: SupaschemaConfig,
+  overlaySchemas: readonly string[]
+): Pool & CatalogPool {
   const pool = new Pool({
-    connectionString: options.databaseUrl,
+    connectionString: databaseUrl,
     max: 4,
     options: "-c search_path=",
   });
-  const catalogPool: CatalogPool = Object.assign(pool, {
+  pool.on("error", () => undefined);
+  return Object.assign(pool, {
     schemaFilter: managedSchemaFilterFor({
       schemas: {
         include:
@@ -51,7 +58,26 @@ export async function extractCatalogModel(options: ExtractCatalogOptions): Promi
       },
     }),
   });
-  pool.on("error", () => undefined);
+}
+
+export async function extractRoutineExecuteGrantees(
+  options: Pick<ExtractCatalogOptions, "config" | "databaseUrl">
+): Promise<Map<string, Set<string>> | Diagnostic> {
+  const config = resolveConfig(options.config);
+  const pool = openCatalogPool(options.databaseUrl, config, overlayRetainedSchemas(config));
+  try {
+    return await collectRoutineExecuteGrantees(pool);
+  } catch (error) {
+    return catalogExtractFailedDiagnostic(error);
+  } finally {
+    await pool.end();
+  }
+}
+
+export async function extractCatalogModel(options: ExtractCatalogOptions): Promise<SchemaModel> {
+  const config = resolveConfig(options.config);
+  const overlaySchemas = overlayRetainedSchemas(config);
+  const catalogPool = openCatalogPool(options.databaseUrl, config, overlaySchemas);
   try {
     const sections = await Promise.all([
       collectSection((objects) => appendSchemas(catalogPool, objects, 0)),
@@ -89,18 +115,20 @@ export async function extractCatalogModel(options: ExtractCatalogOptions): Promi
     };
   } catch (error) {
     return {
-      diagnostics: [
-        diagnostic("SUPA_CATALOG_EXTRACT_FAILED", "error", errorMessage(error), {
-          hint: "Confirm the database URL is reachable and the role can read pg_catalog.",
-        }),
-      ],
+      diagnostics: [catalogExtractFailedDiagnostic(error)],
       fingerprint: fingerprintObjects([]),
       objects: [],
       source: options.source ?? "database",
     };
   } finally {
-    await pool.end();
+    await catalogPool.end();
   }
+}
+
+function catalogExtractFailedDiagnostic(error: unknown): Diagnostic {
+  return diagnostic("SUPA_CATALOG_EXTRACT_FAILED", "error", errorMessage(error), {
+    hint: "Confirm the database URL is reachable and the role can read pg_catalog.",
+  });
 }
 
 async function collectSection(

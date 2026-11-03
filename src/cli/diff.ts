@@ -37,6 +37,7 @@ interface PlanCommandOptions {
 }
 type DiffOptions = PlanCommandOptions & {
   checkChain: boolean;
+  databaseUrl?: string;
   dryRun?: boolean;
   failOnDiff?: boolean;
   json?: boolean;
@@ -44,6 +45,8 @@ type DiffOptions = PlanCommandOptions & {
   name?: string;
   out?: string;
   replace?: string;
+  routinePrivilegeDatabaseUrl?: string;
+  routinePrivilegeDrift?: boolean;
   summary?: boolean;
   watch?: boolean;
   writeHints?: string;
@@ -54,6 +57,7 @@ export interface DiffCommandContext {
   configPath: () => string | undefined;
   loadCliConfig: () => Promise<SupaschemaConfig>;
   printDiagnostics: (diagnostics: Diagnostic[]) => void;
+  resolveCliDatabaseUrl: (explicit?: string) => Promise<string | undefined>;
 }
 
 export function registerDiffCommands(program: Command, context: DiffCommandContext): void {
@@ -108,6 +112,14 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
       "--write-hints <file>",
       "write the gated destructive object keys as a hints.destructive skeleton for review (never overwrites)"
     )
+    .option(
+      "--routine-privilege-drift",
+      "also plan declared routine REVOKEs whose grantee still holds EXECUTE in the applied database (reads the database catalog)"
+    )
+    .option(
+      "--database-url <url>",
+      "database read by --routine-privilege-drift (default: --env, SUPASCHEMA_DATABASE_URL, then the local Supabase stack from supabase/config.toml)"
+    )
     .option("--timing", "print extract/plan/render phase timings to stderr")
     .option(
       "--watch",
@@ -129,7 +141,16 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
           return;
         }
       }
-      const resolved = await withSourceDefaults(options, config);
+      const routinePrivilegeDatabaseUrl = await resolveRoutinePrivilegeDatabaseUrl(
+        options,
+        context
+      );
+      const resolved = await withSourceDefaults(
+        routinePrivilegeDatabaseUrl === undefined
+          ? options
+          : { ...options, routinePrivilegeDatabaseUrl },
+        config
+      );
       if (printBlockingSourceDiagnostics(resolved, context)) {
         return;
       }
@@ -143,6 +164,27 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
 
 function isZeroSourceDiff(options: PlanCommandOptions): boolean {
   return options.from === undefined && options.to === undefined;
+}
+
+async function resolveRoutinePrivilegeDatabaseUrl(
+  options: DiffOptions,
+  context: Pick<DiffCommandContext, "resolveCliDatabaseUrl">
+): Promise<string | undefined> {
+  if (options.routinePrivilegeDrift !== true) {
+    if (options.databaseUrl !== undefined) {
+      throw new Error(
+        "--database-url only selects the database that --routine-privilege-drift reads; add --routine-privilege-drift or remove --database-url"
+      );
+    }
+    return;
+  }
+  const databaseUrl = await context.resolveCliDatabaseUrl(options.databaseUrl);
+  if (databaseUrl === undefined) {
+    throw new Error(
+      "no database URL for --routine-privilege-drift: pass --database-url, --env, set SUPASCHEMA_DATABASE_URL, or run inside a project with supabase/config.toml"
+    );
+  }
+  return databaseUrl;
 }
 
 type WithSources<T> = T & {
@@ -519,7 +561,11 @@ async function watchDiff(
 }
 
 function buildPlan(
-  options: WithSources<PlanCommandOptions> & { migrationsDir?: string; replace?: string },
+  options: WithSources<PlanCommandOptions> & {
+    migrationsDir?: string;
+    replace?: string;
+    routinePrivilegeDatabaseUrl?: string;
+  },
   config: SupaschemaConfig
 ): Promise<MigrationPlan> {
   const excludeMigrationFiles = replacedMigrationFiles(options.replace);
@@ -530,6 +576,9 @@ function buildPlan(
     from: options.from,
     ...(options.migrationsDir === undefined ? {} : { migrationsDir: options.migrationsDir }),
     mode: options.mode,
+    ...(options.routinePrivilegeDatabaseUrl === undefined
+      ? {}
+      : { routinePrivilegeDatabaseUrl: options.routinePrivilegeDatabaseUrl }),
     ...(options.schema === undefined ? {} : { schema: options.schema }),
     ...(options.timing === undefined ? {} : { timing: options.timing }),
     to: options.to,

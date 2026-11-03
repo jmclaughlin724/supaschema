@@ -159,7 +159,9 @@ describe("migrations source replay", () => {
 
     const config = resolveConfig({ migrationsDir: fixture });
     const first = await extractSourceModel(`migrations:${fixture}`, { config });
-    const second = await extractSourceModel(`migrations:${fixture}`, { config });
+    const second = await extractSourceModel(`migrations:${fixture}`, {
+      config,
+    });
 
     expect(first.diagnostics).toEqual([]);
     expect(second.diagnostics).toEqual([]);
@@ -257,6 +259,21 @@ DROP TABLE app.transient_events;`,
 
     expect(errors(model.diagnostics)).toEqual([]);
     expect(model.objects.map((object) => object.key)).not.toContain("table:app.transient_events");
+  });
+
+  it("replays CREATE and DROP FOREIGN DATA WRAPPER", async () => {
+    const model = await extractMigrations([
+      [
+        "20240101000000_create_drop_fdw.sql",
+        `CREATE FOREIGN DATA WRAPPER airtable;
+DROP FOREIGN DATA WRAPPER airtable;`,
+      ],
+    ]);
+
+    expect(errors(model.diagnostics)).toEqual([]);
+    expect(model.objects.map((object) => object.key)).not.toContain(
+      "foreign-data-wrapper:airtable"
+    );
   });
 
   it("replays DROP INDEX before an index is recreated", async () => {
@@ -550,6 +567,39 @@ ALTER TYPE app.status ADD VALUE IF NOT EXISTS 'queued' BEFORE 'active';`,
     expect(enumValues(model, "enum:app.status")).toEqual(["draft", "queued", "active"]);
   });
 
+  it("preserves quoted identifiers while replaying DO-block DDL", async () => {
+    const ddl = 'CREATE TABLE app."items;""archive" ("create;value" text);';
+    const history = await extractMigrations([
+      [
+        "20240101000000_quoted_identifier.sql",
+        `CREATE SCHEMA app;
+DO $schema_replay$ BEGIN ${ddl} END $schema_replay$;`,
+      ],
+    ]);
+    const declared = await extractDirectory([["app.sql", `CREATE SCHEMA app; ${ddl}`]]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+  });
+
+  it("preserves bare-dollar-quoted values while replaying DO-block DDL", async () => {
+    const ddl = "CREATE TYPE app.status AS ENUM ($$draft;queued$$, 'active');";
+    const history = await extractMigrations([
+      [
+        "20240101000000_dollar_quote.sql",
+        `CREATE SCHEMA app;
+DO $schema_replay$ BEGIN ${ddl} END $schema_replay$;`,
+      ],
+    ]);
+    const declared = await extractDirectory([["app.sql", `CREATE SCHEMA app; ${ddl}`]]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+    expect(enumValues(history, "enum:app.status")).toEqual(["draft;queued", "active"]);
+  });
+
   it("preserves one DO-block idempotency guard across multiple guarded DDL statements", async () => {
     const model = await extractMigrations([
       [
@@ -727,7 +777,11 @@ ALTER TABLE app.accounts RENAME TO customers;`,
     expect(targets).toHaveLength(2);
     expect(targets).toContainEqual(expect.objectContaining({ kind: "table", name: "customers" }));
     expect(targets).toContainEqual(
-      expect.objectContaining({ kind: "column", name: "email", table: "customers" })
+      expect.objectContaining({
+        kind: "column",
+        name: "email",
+        table: "customers",
+      })
     );
     for (const comment of model.objects.filter((object) => object.ref.kind === "comment")) {
       expect(comment.sql).toContain("customers");
@@ -797,7 +851,10 @@ COMMENT ON SCHEMA extra IS 'docs';`,
     const comments = model.objects.filter((object) => object.ref.kind === "comment");
     expect(comments).toHaveLength(1);
     expect(comments[0]?.metadata.description).toBe("docs");
-    expect(comments[0]?.metadata.commentTarget).toMatchObject({ kind: "schema", name: "extra" });
+    expect(comments[0]?.metadata.commentTarget).toMatchObject({
+      kind: "schema",
+      name: "extra",
+    });
   });
 
   it("hard-fails unsupported rename types without returning partial objects", async () => {
@@ -840,7 +897,10 @@ CREATE TABLE app.accounts (id integer);
 ALTER TABLE app.accounts DROP COLUMN IF EXISTS missing_column;`,
         ],
       ],
-      resolveConfig({ managedSchemas: ["auth"], schemas: { exclude: ["auth"], include: [] } })
+      resolveConfig({
+        managedSchemas: ["auth"],
+        schemas: { exclude: ["auth"], include: [] },
+      })
     );
 
     expect(errors(model.diagnostics)).toEqual([]);
@@ -857,7 +917,10 @@ CREATE SCHEMA app;
 CREATE TABLE app.accounts (id integer);`,
         ],
       ],
-      resolveConfig({ managedSchemas: ["vault"], schemas: { exclude: ["vault"], include: [] } })
+      resolveConfig({
+        managedSchemas: ["vault"],
+        schemas: { exclude: ["vault"], include: [] },
+      })
     );
 
     expect(errors(model.diagnostics)).toEqual([]);
@@ -1253,7 +1316,9 @@ CREATE INDEX accounts_lookup_idx ON app.accounts (id);`,
       ],
     ]);
     const config = resolveConfig();
-    const replayed = await extractSourceModel(`migrations:${migrations}`, { config });
+    const replayed = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+    });
     const declared = await extractSourceModel(`dir:${tree}`, { config });
 
     expect(errors(replayed.diagnostics)).toEqual([]);
@@ -1293,8 +1358,14 @@ CREATE TABLE app.accounts (id bigint);`
       migrationsDir: migrations,
       schemaPaths: [schemas],
     });
-    const replayed = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
-    const declared = await extractSourceModel(`dir:${schemas}`, { config, cwd: root });
+    const replayed = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
+    const declared = await extractSourceModel(`dir:${schemas}`, {
+      config,
+      cwd: root,
+    });
 
     expect(errors(replayed.diagnostics)).toEqual([]);
     expect(errors(declared.diagnostics)).toEqual([]);
@@ -1316,11 +1387,17 @@ CREATE TABLE app.accounts (id bigint);`
       schemaPaths: [schemas],
       sources: { from: "empty:" },
     });
-    const before = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const before = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     const generatedPath = join(migrations, "20240102000000_generated.sql");
     const generatedSql = "ALTER TABLE app.accounts ADD COLUMN name text;\n";
     await writeFile(generatedPath, generatedSql);
-    const generated = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const generated = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     await writeFile(
       generatedPath,
       `-- supaschema: lineage format=${MODEL_FORMAT_VERSION} from=${before.fingerprint} to=${generated.fingerprint}
@@ -1398,7 +1475,10 @@ ${generatedSql}`
       schemaPaths: [schemas],
       sources: { from: "empty:" },
     });
-    const before = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const before = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     const generatedPath = join(migrations, "20240102000000_generated.sql");
     const generatedSql = "ALTER TABLE app.accounts ADD COLUMN name text;\n";
     await writeFile(generatedPath, generatedSql);
@@ -1853,7 +1933,9 @@ GRANT SELECT(id, token) ON app.sessions TO app_worker;`,
     const grants = model.objects.filter((object) => object.ref.kind === "grant");
     expect(grants).toHaveLength(1);
     expect(grants[0]?.metadata.privileges).toEqual(["INSERT", "SELECT"]);
-    expect(grants[0]?.metadata.columnPrivileges).toEqual({ SELECT: ["id", "token"] });
+    expect(grants[0]?.metadata.columnPrivileges).toEqual({
+      SELECT: ["id", "token"],
+    });
     expect(grants[0]?.sql).toBe(
       'GRANT INSERT, SELECT ("id", "token") ON TABLE "app"."sessions" TO "app_worker"'
     );
@@ -1920,7 +2002,9 @@ CREATE TABLE app.accounts (id integer);`,
   it("hard-fails a missing migrations directory with a named ordering diagnostic", async () => {
     const root = await mkdtemp(join(tmpdir(), "supa-replay-missing-"));
     const missing = join(root, "missing");
-    const model = await extractSourceModel(`migrations:${missing}`, { config: resolveConfig() });
+    const model = await extractSourceModel(`migrations:${missing}`, {
+      config: resolveConfig(),
+    });
 
     expect(model.objects).toEqual([]);
     expect(errors(model.diagnostics).map((item) => item.code)).toEqual(["SUPA_REPLAY_ORDER_GAP"]);

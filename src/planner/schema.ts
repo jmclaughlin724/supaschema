@@ -27,7 +27,12 @@ import { sortOperations } from "./order.js";
 import { destructiveAllowedDisposition, refineReplaceOperation } from "./replace.js";
 import { makeTableAlterOperation } from "./table.js";
 
-type DiffOptions = Pick<RenderOptions, "config"> & { migrationCorpus?: MigrationCorpus };
+type AppliedRoutineExecuteGrantees = ReadonlyMap<string, ReadonlySet<string>>;
+
+type DiffOptions = Pick<RenderOptions, "config"> & {
+  appliedRoutineExecuteGrantees?: AppliedRoutineExecuteGrantees;
+  migrationCorpus?: MigrationCorpus;
+};
 
 export function planSchemaDiff(
   from: SchemaModel,
@@ -53,6 +58,13 @@ export function planSchemaDiff(
     migrationCorpus
   );
   appendCreatedOperations(fromMap, toMap, consumedTo, operations, config, migrationCorpus);
+  appendRoutinePrivilegeRevokes(
+    operations,
+    to,
+    config,
+    migrationCorpus,
+    options.appliedRoutineExecuteGrantees
+  );
   appendReplacedObjectDependents(operations, from, to, config, migrationCorpus);
   appendChangedColumnBlockingDependents(operations, from, to, config, migrationCorpus);
   appendDependencyProofDiagnostics(operations, from, to);
@@ -189,6 +201,88 @@ function appendCreatedOperations(
       operations.push(makeOperation("create", key, undefined, after, config, migrationCorpus));
     }
   }
+}
+
+function appendRoutinePrivilegeRevokes(
+  operations: MigrationOperation[],
+  to: SchemaModel,
+  config: SupaschemaConfig,
+  migrationCorpus: MigrationCorpus | undefined,
+  appliedExecuteGrantees: AppliedRoutineExecuteGrantees | undefined
+): void {
+  const droppedRoutineIdentities = droppedRetainedRoutineIdentities(operations, to);
+  if (droppedRoutineIdentities.size === 0 && !appliedExecuteGrantees) {
+    return;
+  }
+  const existingGrantCreates = new Set(
+    operations
+      .filter((operation) => operation.kind === "create" && operation.ref.kind === "grant")
+      .map((operation) => operation.key)
+  );
+  for (const object of to.objects) {
+    const targetIdentity = object.metadata.targetIdentity;
+    const grantee = object.metadata.grantee;
+    if (
+      object.ref.kind !== "grant" ||
+      object.metadata.verb !== "REVOKE" ||
+      typeof targetIdentity !== "string" ||
+      existingGrantCreates.has(object.key)
+    ) {
+      continue;
+    }
+    const appliedDrift =
+      typeof grantee === "string" &&
+      appliedExecuteGrantees?.get(targetIdentity)?.has(grantee) === true;
+    if (!(appliedDrift || droppedRoutineIdentities.has(targetIdentity))) {
+      continue;
+    }
+    const operation = makeOperation(
+      "create",
+      object.key,
+      undefined,
+      object,
+      config,
+      migrationCorpus
+    );
+    if (appliedDrift) {
+      operation.diagnostics.push(
+        diagnostic(
+          "SUPA_ROUTINE_PRIVILEGE_DRIFT",
+          "warning",
+          `${grantee} still holds EXECUTE on ${targetIdentity} in the applied database, but the declarative schema revokes it`,
+          {
+            hint: "The plan re-applies the declared REVOKE. If the applied EXECUTE grant is intended, remove the REVOKE from the declarative schema instead of applying this migration.",
+            ref: object.ref,
+          }
+        )
+      );
+    }
+    operations.push(operation);
+  }
+}
+
+function droppedRetainedRoutineIdentities(
+  operations: readonly MigrationOperation[],
+  to: SchemaModel
+): Set<string> {
+  const droppedIdentities = new Set(
+    operations
+      .filter((operation) => operation.kind === "drop" || operation.kind === "replace")
+      .flatMap((operation) => routineGrantTargetIdentity(operation.ref))
+  );
+  if (droppedIdentities.size === 0) {
+    return droppedIdentities;
+  }
+  return new Set(
+    to.objects
+      .flatMap((object) => routineGrantTargetIdentity(object.ref))
+      .filter((identity) => droppedIdentities.has(identity))
+  );
+}
+
+function routineGrantTargetIdentity(ref: ObjectRef): string[] {
+  const identity = routineKinds.has(ref.kind) ? grantTargetIdentity(ref) : undefined;
+  return identity === undefined ? [] : [identity];
 }
 
 interface DroppedObjectContext {
@@ -1082,7 +1176,9 @@ function operationMetadata(
   if (!destructive) {
     return {};
   }
-  return { destructiveDisposition: blocked ? "blocked" : destructiveDisposition };
+  return {
+    destructiveDisposition: blocked ? "blocked" : destructiveDisposition,
+  };
 }
 
 function isMigrationCorpusAllowed(
