@@ -64,7 +64,6 @@ function claudeHookSourceFiles(overrides: Record<string, string> = {}): Record<s
     ].join("\n"),
     ".claude/settings.json": `${JSON.stringify(claudeHookSettings())}\n`,
     "AGENTS.md": "# Agents\n",
-    "CLAUDE.md": "@AGENTS.md\n",
     "scripts/agent-hooks/command-evidence.mts": "domains.length === 0\n",
     "scripts/agent-hooks/response-evidence.mts":
       "exitCodeFromExecutionStatus isExecutionStatusLabel\n",
@@ -466,14 +465,6 @@ describe("sync:llm", () => {
 
     expect(() => renderSourceCodexHooks(root)).toThrow(
       ".claude/settings.json must not register a direct source Claude Bash guard"
-    );
-  });
-
-  it("blocks Codex hook rendering when Claude does not import the repo contract", () => {
-    const root = tempSurface(claudeHookSourceFiles({ "CLAUDE.md": "# Claude\n" }));
-
-    expect(() => renderSourceCodexHooks(root)).toThrow(
-      "CLAUDE.md must import @AGENTS.md so Claude receives the repo contract"
     );
   });
 });

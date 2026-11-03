@@ -4,7 +4,6 @@ enforcement:
 description: Canonical owner and sync matrix for Claude, Codex, Agents, skills, rules, hooks, MCP config, and package-bundled consumer surfaces.
 paths:
   - "AGENTS.md"
-  - "CLAUDE.md"
   - ".claude/**"
   - ".codex/**"
   - ".agents/**"
@@ -26,9 +25,8 @@ This rule owns the canonical-owner and generated-mirror sync matrix for agent-fa
 
 | Surface | Canonical owner | Targets | Sync / validation |
 | --- | --- | --- | --- |
-| Root Codex runtime brief | root `AGENTS.md` | loaded directly by Codex; imported by `CLAUDE.md` | no generated sync; preserve the user-owned brief |
+| Root Codex runtime brief | root `AGENTS.md` | loaded directly by Codex | no generated sync; preserve the user-owned brief |
 | Nested Codex briefs | `<subfolder>/AGENTS.md` | loaded hierarchically by Codex for matching subtrees | no generated sync; validate scoped routes with `npm run guard` |
-| Claude runtime entrypoint | `CLAUDE.md` | Claude Code | keep as a runtime entrypoint for Claude Code only; unique durable policy belongs in `AGENTS.md` or scoped rules |
 | Rules | `.claude/rules/**` | Codex rule pointers/mirrors when packaged | `npm run sync:llm`; rule guard if available |
 | Skills | `.claude/skills/**`; parsed `metadata.public` frontmatter marks public skills | `.agents/skills/**`; public `skills/**`; Agent/Claude bundle skill trees and manifest | `npm run sync:llm` |
 | Hooks | `.claude/hooks/**` | `.codex/hooks/**` mirrors or native adapters where supported | edit Claude/shared owner, then sync or update native adapter |
@@ -41,9 +39,9 @@ This rule owns the canonical-owner and generated-mirror sync matrix for agent-fa
 - `.claude/**` is the canonical authoring surface for maintainer Claude rules, skills, hooks, and agents.
 - The root `AGENTS.md` is the canonical, user-owned Codex project brief because Codex loads it directly and does not load `.claude/rules/**` prose automatically. This rule does not constrain the root brief to a route map, concise projection, rule index, or any prescribed content shape.
 - Route-map, concision, section-order, and content-placement guidance applies only to nested `<subfolder>/AGENTS.md` files. Any owner pointer in a nested brief must resolve to a live owner.
-- `CLAUDE.md` MUST import `@AGENTS.md` when maintainer hooks are enabled, so Claude sessions receive the same root operating contract that Codex receives.
+- The repository has no root `CLAUDE.md`. Root `AGENTS.md` is the only root brief; durable policy belongs there or in scoped rules.
 - `.codex/**` and `.agents/**` are generated or native runtime targets only where this rule names them as owners. Generated `.codex/rules/**` contain command policy or owner pointers, not the Markdown rule prose, so they do not replace the root or nested `AGENTS.md` chain.
-- `scripts/skills/sync-llm.mts` is the writer for generated LLM mirrors and generated source-repo `.codex/hooks.json`. It MUST validate Claude hook registration and the `CLAUDE.md` root-contract import before rendering Codex hook registration. Do not hand-edit synced copies.
+- `scripts/skills/sync-llm.mts` is the writer for generated LLM mirrors and generated source-repo `.codex/hooks.json`. It MUST validate Claude hook registration before rendering Codex hook registration. Do not hand-edit synced copies.
 - `skills/supaschema` is a generated public mirror of `.claude/skills/supaschema`. It is the only supported `npx skills` source in this repository.
 - Source-repo hook runtime, Claude rules, generated Codex rule mirrors, and `.claude/settings.json` are public branch surfaces when tracked `.codex/hooks.json`, guards, or `AGENTS.md` route to them. Keep personal overlays, optimizer skills, maintainer-only agents, `.codex/config.toml`, MCP/deployment configs, private services, and generated state gitignored.
 - Do not use `.gitignore` or Git index flags to hide a file required by tracked hook registration, tracked guards, or tracked rule routing. Track the required runtime file or remove the tracked reference.

@@ -71,7 +71,6 @@ function localRunnerFixtureFiles(overrides: Record<string, string> = {}) {
     ".claude/skills/supaschema/SKILL.md": "Use the package manager local runner.\n",
     "AGENTS.md": "Use the package manager local runner.\n",
     "bin/scaffold.mjs": "export {};\n",
-    "CLAUDE.md": "Use the package manager local runner.\n",
     "README.md": "Use the package manager local runner.\n",
     ...Object.fromEntries(
       localRunnerDocsPages.map((route) => [`docs/${route}.mdx`, page("## Start")])

@@ -7,7 +7,6 @@ const LOCAL_RUNNER_CONVENTION_SURFACES = [
   ".claude/skills/supaschema/SKILL.md",
   ".claude/rules/supaschema.md",
   "AGENTS.md",
-  "CLAUDE.md",
   "README.md",
   "bin/scaffold.mjs",
   "docs/coding-agents/agent-bundle.mdx",
