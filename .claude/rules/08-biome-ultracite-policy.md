@@ -5,9 +5,9 @@ paths:
   - "ultracite.*"
   - "package.json"
   - "package-lock.json"
-  - "scripts/lint.mjs"
-  - "scripts/format.mjs"
-  - "scripts/lib/repo-files.mjs"
+  - "scripts/lint.mts"
+  - "scripts/format.mts"
+  - "scripts/lib/repo-files.mts"
   - "scripts/guards/toolchain/**"
 ---
 
@@ -31,8 +31,8 @@ Biome is the canonical JS/TS/JSX/TSX/JSON/JSONC/CSS/HTML/GraphQL formatter and l
 
 - `biome.jsonc` is the canonical JS/TS/JSX/TSX/JSON/JSONC/CSS/HTML/GraphQL/SVG lint and format configuration. This is a single-package npm repo, so there is exactly one root `biome.jsonc` and no per-package Biome configs.
 - Root `biome.jsonc` extends Ultracite's `core`, `type-aware`, and `vitest` Biome presets (`ultracite/biome/core`, `ultracite/biome/type-aware`, `ultracite/biome/vitest`), then overrides only the repo-approved low-churn defaults.
-- `scripts/lint.mjs` and `scripts/format.mjs` are the package-owned execution layer. `npm run lint` checks the Git-visible repository and then the explicit `LOCAL_BIOME_PATHS`; `npm run lint:ci` runs the same two passes with the GitHub reporter. The read-only runner accepts only `--ci`, `--reporter=github|summary`, and `--max-diagnostics=<count>`; it must reject write, unsafe-fix, alternate-config, reporter-file, rule-skip, and arbitrary passthrough flags. `npm run format` applies fixes before chaining the non-Biome language owners, and `npm run format -- <paths...>` accepts only `--staged` or existing repository-relative targets whose real paths stay inside the repository. No package, workflow, hook, agent, or generator may bypass these wrappers with direct `biome`, `ultracite check`, or `ultracite fix` commands.
-- `scripts/lib/repo-files.mjs` is the canonical owner for `LOCAL_BIOME_PATHS` and the wider repository inventory policy. Keep `vcs.useIgnoreFile: true` for the normal pass; only the bounded active-local pass uses `--vcs-use-ignore-file=false`. Do not disable VCS ignores globally or replace the list with a recursive scan of ignored state.
+- `scripts/lint.mts` and `scripts/format.mts` are the package-owned execution layer. `npm run lint` checks the Git-visible repository and then the explicit `LOCAL_BIOME_PATHS`; `npm run lint:ci` runs the same two passes with the GitHub reporter. The read-only runner accepts only `--ci`, `--reporter=github|summary`, and `--max-diagnostics=<count>`; it must reject write, unsafe-fix, alternate-config, reporter-file, rule-skip, and arbitrary passthrough flags. `npm run format` applies fixes before chaining the non-Biome language owners, and `npm run format -- <paths...>` accepts only `--staged` or existing repository-relative targets whose real paths stay inside the repository. No package, workflow, hook, agent, or generator may bypass these wrappers with direct `biome`, `ultracite check`, or `ultracite fix` commands.
+- `scripts/lib/repo-files.mts` is the canonical owner for `LOCAL_BIOME_PATHS` and the wider repository inventory policy. Keep `vcs.useIgnoreFile: true` for the normal pass; only the bounded active-local pass uses `--vcs-use-ignore-file=false`. Do not disable VCS ignores globally or replace the list with a recursive scan of ignored state.
 - Do not add a duplicate `"**"` to `files.includes`; `ultracite/biome/core` already provides the catch-all, and strict Biome flags duplicate first exceptions.
 - Keep `html.experimentalFullSupportEnabled` enabled so HTML receives parse/format/lint coverage. Keep `javascript.experimentalEmbeddedSnippetsEnabled` enabled so supported CSS/GraphQL tagged-template snippets are governed with their host JavaScript.
 - Type-aware and project-scanner Biome rules are part of the required gate for dependency declarations, private imports, JSON import attributes, import cycles, and deprecated imports. Import-extension rewriting is enabled, not disabled: `correctness.useImportExtensions` is set to `error` with the `ts -> js` / `tsx -> js` extension mappings so relative imports carry emitted-runtime `.js` specifiers, as this NodeNext package requires. `npm run typecheck` remains the semantic TypeScript type gate.
@@ -44,16 +44,16 @@ Biome is the canonical JS/TS/JSX/TSX/JSON/JSONC/CSS/HTML/GraphQL formatter and l
 - Biome does not own Markdown, MDX, YAML, or SQL. Do not point Biome at those surfaces.
 - Local Biome suppression comments are forbidden. Investigate the related upstream rule, fix the code, or adjust the shared `biome.jsonc` policy with a repo-wide rationale.
 - Do not add a second Biome config that drifts from the root policy without first creating a deliberate shared-config design and updating this rule.
-- When adding a governed root or ignored-local path, update `scripts/lib/repo-files.mjs`, run `npm run format` as the only write/fix path, and then run the read-only gates. During agent work, invoke Biome/Ultracite only through the npm scripts; do not run `npm run lint fix` and do not add formatter aliases such as `npm run lint:fix`.
+- When adding a governed root or ignored-local path, update `scripts/lib/repo-files.mts`, run `npm run format` as the only write/fix path, and then run the read-only gates. During agent work, invoke Biome/Ultracite only through the npm scripts; do not run `npm run lint fix` and do not add formatter aliases such as `npm run lint:fix`.
 - Do not reintroduce ESLint as a parallel JS/TS gate.
 
 ## Enforced by
 
-- `npm run lint` and `npm run lint:ci`, both through `scripts/lint.mjs`.
-- `npm run format` and its scoped/staged mode through `scripts/format.mjs`.
+- `npm run lint` and `npm run lint:ci`, both through `scripts/lint.mts`.
+- `npm run format` and its scoped/staged mode through `scripts/format.mts`.
 - `npm run lint:doctor`.
-- `npm run guard` (`scripts/guards/check-all.mjs`).
-- `scripts/guards/toolchain/check-tooling-stack.mjs` plus focused runner/discovery tests. They pin tooling and assert wrapper ownership and behavior, safe argument and target handling, Lefthook and generator routing, the active-local inventory, symlink rejection, experimental language support, presets, import mappings, approved overrides, and the exact reviewed exclusion boundary.
+- `npm run guard` (`scripts/guards/check-all.mts`).
+- `scripts/guards/toolchain/check-tooling-stack.mts` plus focused runner/discovery tests. They pin tooling and assert wrapper ownership and behavior, safe argument and target handling, Lefthook and generator routing, the active-local inventory, symlink rejection, experimental language support, presets, import mappings, approved overrides, and the exact reviewed exclusion boundary.
 
 STOP if any of these occurs:
 

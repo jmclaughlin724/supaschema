@@ -32,9 +32,9 @@ This rule owns the canonical-owner and generated-mirror sync matrix for agent-fa
 | Rules | `.claude/rules/**` | Codex rule pointers/mirrors when packaged | `npm run sync:llm`; rule guard if available |
 | Skills | `.claude/skills/**`; parsed `metadata.public` frontmatter marks public skills | `.agents/skills/**`; public `skills/**`; Agent/Claude bundle skill trees and manifest | `npm run sync:llm` |
 | Hooks | `.claude/hooks/**` | `.codex/hooks/**` mirrors or native adapters where supported | edit Claude/shared owner, then sync or update native adapter |
-| Native Codex hook registration | `scripts/skills/sync-llm.mjs` plus `.claude/settings.json` | `.codex/hooks.json` and packaged consumer registration | idempotent `npm run sync:llm`, hook/package guards |
+| Native Codex hook registration | `scripts/skills/sync-llm.mts` plus `.claude/settings.json` | `.codex/hooks.json` and packaged consumer registration | idempotent `npm run sync:llm`, hook/package guards |
 | MCP registry | `.mcp.json`, `fastmcp.json` | local MCP clients and package docs | `npm run guard:fastmcp`, `npm run guard:agent` |
-| Consumer agent bundle | curated `.claude/skills/**`, `.claude/rules/supaschema.md`, consumer hook sources, `agent-bundle/INSTALL.md`, `package.json#files`, `bin/scaffold.mjs`, `scripts/skills/sync-llm.mjs` | raw npm tarball bundle, ordered skills manifest, and default installed project scaffold | `npm run sync:llm`, `npm run check:package`, `npm pack --dry-run --json`, lifecycle tests |
+| Consumer agent bundle | curated `.claude/skills/**`, `.claude/rules/supaschema.md`, consumer hook sources, `agent-bundle/INSTALL.md`, `package.json#files`, `bin/scaffold.mjs`, `scripts/skills/sync-llm.mts` | raw npm tarball bundle, ordered skills manifest, and default installed project scaffold | `npm run sync:llm`, `npm run check:package`, `npm pack --dry-run --json`, lifecycle tests |
 
 ## Rules
 
@@ -43,7 +43,7 @@ This rule owns the canonical-owner and generated-mirror sync matrix for agent-fa
 - Route-map, concision, section-order, and content-placement guidance applies only to nested `<subfolder>/AGENTS.md` files. Any owner pointer in a nested brief must resolve to a live owner.
 - `CLAUDE.md` MUST import `@AGENTS.md` when maintainer hooks are enabled, so Claude sessions receive the same root operating contract that Codex receives.
 - `.codex/**` and `.agents/**` are generated or native runtime targets only where this rule names them as owners. Generated `.codex/rules/**` contain command policy or owner pointers, not the Markdown rule prose, so they do not replace the root or nested `AGENTS.md` chain.
-- `scripts/skills/sync-llm.mjs` is the writer for generated LLM mirrors and generated source-repo `.codex/hooks.json`. It MUST validate Claude hook registration and the `CLAUDE.md` root-contract import before rendering Codex hook registration. Do not hand-edit synced copies.
+- `scripts/skills/sync-llm.mts` is the writer for generated LLM mirrors and generated source-repo `.codex/hooks.json`. It MUST validate Claude hook registration and the `CLAUDE.md` root-contract import before rendering Codex hook registration. Do not hand-edit synced copies.
 - `skills/supaschema` is a generated public mirror of `.claude/skills/supaschema`. It is the only supported `npx skills` source in this repository.
 - Source-repo hook runtime, Claude rules, generated Codex rule mirrors, and `.claude/settings.json` are public branch surfaces when tracked `.codex/hooks.json`, guards, or `AGENTS.md` route to them. Keep personal overlays, optimizer skills, maintainer-only agents, `.codex/config.toml`, MCP/deployment configs, private services, and generated state gitignored.
 - Do not use `.gitignore` or Git index flags to hide a file required by tracked hook registration, tracked guards, or tracked rule routing. Track the required runtime file or remove the tracked reference.

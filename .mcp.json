@@ -9,14 +9,9 @@
   ],
   "mcpServers": {
     "cloudflare-api": {
-      "type": "http",
-      "url": "https://mcp.cloudflare.com/mcp",
-      "headers": {
-        "Authorization": "Bearer ${input:cloudflare-api-token}"
-      }
+      "url": "https://mcp.cloudflare.com/mcp"
     },
     "cloudflare-docs": {
-      "type": "http",
       "url": "https://docs.mcp.cloudflare.com/mcp"
     },
     "supaschema": {
@@ -31,27 +26,30 @@
         "--skip-env"
       ]
     },
+    "lsp-soleaux": {
+      "command": "bun",
+      "args": ["/Users/johnmclaughlin/projects/lsp-soleaux/index.ts"],
+      "env": {
+        "LSP_SOLEAUX_CONFIG_PATH": "/Users/johnmclaughlin/projects/supaschema/lsp-soleaux.json",
+        "LSP_SOLEAUX_CATALOG": "research"
+      }
+    },
     "context7": {
-      "type": "http",
       "url": "https://mcp.context7.com/mcp"
     },
     "openaiDeveloperDocs": {
-      "type": "http",
       "url": "https://developers.openai.com/mcp"
     },
     "stripe": {
       "url": "https://mcp.stripe.com"
     },
     "ultracite": {
-      "type": "http",
       "url": "https://gitmcp.io/haydenbleasel/ultracite"
     },
     "zod": {
-      "type": "http",
       "url": "https://mcp.inkeep.com/zod/mcp"
     },
     "supaschema-docs": {
-      "type": "http",
       "url": "https://supaschema.com/docs/mcp"
     }
   }

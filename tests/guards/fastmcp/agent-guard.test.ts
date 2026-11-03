@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { check } from "../../../scripts/guards/fastmcp/check-fastmcp-agent.mjs";
+import { check } from "../../../scripts/guards/fastmcp/check-fastmcp-agent.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 const cloudflareRegistryAuthorization = ["Bearer $", "{input:cloudflare-api-token}"].join("");
@@ -142,7 +142,7 @@ const fixture = (mutate?: (state: FixtureState) => void): string => {
         "fastmcp:inspect": "fastmcp inspect fastmcp.json",
         "fastmcp:list": "fastmcp list fastmcp.json",
         "fastmcp:status": "fastmcp call fastmcp.json server_status",
-        "guard:fastmcp": "node scripts/guards/fastmcp/check-fastmcp-agent.mjs",
+        "guard:fastmcp": "node scripts/guards/fastmcp/check-fastmcp-agent.mts",
       },
     }),
     ...state.extraFiles,

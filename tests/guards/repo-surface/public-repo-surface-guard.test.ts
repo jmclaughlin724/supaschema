@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ROOT } from "../../../scripts/guards/lib/repository.js";
-import { check } from "../../../scripts/guards/repo-surface/check-public-repo-surface.mjs";
+import { ROOT } from "../../../scripts/guards/lib/repository.mts";
+import { check } from "../../../scripts/guards/repo-surface/check-public-repo-surface.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 const privatePaths: { agentPrivate: string[]; heldPrivate: string[] } = JSON.parse(
@@ -22,14 +22,14 @@ describe("public repo surface guard", () => {
 
   it("allows reviewed source-repo hook runtime surfaces", () => {
     const root = tempGuardRepo({
-      ".claude/hooks/context-pre-tool-use.mjs": "export {};\n",
-      ".claude/hooks/supaschema-source-hook.mjs": "export {};\n",
+      ".claude/hooks/context-pre-tool-use.mts": "export {};\n",
+      ".claude/hooks/supaschema-source-hook.mts": "export {};\n",
       ".claude/rules/22-agent-surface-sync-ownership.md": "# Rule 22\n",
       ".claude/settings.json": "{}\n",
-      ".codex/hooks/context-pre-tool-use.mjs": "export {};\n",
-      ".codex/hooks/supaschema-source-hook.mjs": "export {};\n",
+      ".codex/hooks/context-pre-tool-use.mts": "export {};\n",
+      ".codex/hooks/supaschema-source-hook.mts": "export {};\n",
       ".codex/rules/22-agent-surface-sync-ownership.rules": "# Rule 22\n",
-      "scripts/agent-hooks/runner.mjs": "export {};\n",
+      "scripts/agent-hooks/runner.mts": "export {};\n",
     });
     expect(() => check(root)).not.toThrow();
   });
@@ -54,16 +54,16 @@ describe("public repo surface guard", () => {
 
   it("blocks the wired stripe catalog tooling left untracked on disk", () => {
     const root = tempGuardRepo({
-      "scripts/stripe/create-catalog.mjs": "export {};\n",
+      "scripts/stripe/create-catalog.mts": "export {};\n",
     });
     expect(() => check(root)).toThrow("wired maintainer tooling must be tracked");
   });
 
   it("allows the wired stripe catalog tooling once tracked", () => {
     const root = tempGuardRepo({
-      "scripts/stripe/create-catalog.mjs": "export {};\n",
+      "scripts/stripe/create-catalog.mts": "export {};\n",
     });
-    execFileSync("git", ["add", "scripts/stripe/create-catalog.mjs"], {
+    execFileSync("git", ["add", "scripts/stripe/create-catalog.mts"], {
       cwd: root,
       stdio: "ignore",
     });
@@ -83,7 +83,7 @@ describe("public repo surface guard", () => {
     expect(privatePaths.heldPrivate).not.toContain("scripts/stripe/");
     expect(privatePaths.agentPrivate).not.toContain("scripts/stripe/");
     expect(() =>
-      execFileSync("git", ["check-ignore", "scripts/stripe/create-catalog.mjs"], {
+      execFileSync("git", ["check-ignore", "scripts/stripe/create-catalog.mts"], {
         cwd: ROOT,
         stdio: "ignore",
       })

@@ -6,16 +6,16 @@ import { parse as parseYaml } from "yaml";
 import {
   assertReleasePublicationOrder,
   assertSnapshotJob,
-} from "../../../scripts/guards/ci-release/check-ci-governance.mjs";
+} from "../../../scripts/guards/ci-release/check-ci-governance.mts";
 
 describe("CI governance guard", () => {
   it("scans cached workflow files only", () => {
     const source = ts.createSourceFile(
-      "ci-yaml-primitives.mjs",
-      readFileSync(resolve("scripts/guards/ci-release/ci-yaml-primitives.mjs"), "utf8"),
+      "ci-yaml-primitives.mts",
+      readFileSync(resolve("scripts/guards/ci-release/ci-yaml-primitives.mts"), "utf8"),
       ts.ScriptTarget.Latest,
       true,
-      ts.ScriptKind.JS
+      ts.ScriptKind.TS
     );
     const args = gitWorkflowLsFilesArgs(source);
 
@@ -114,24 +114,24 @@ describe("CI governance guard", () => {
 
   it("covers the consumer canary lane invariants", () => {
     const source = readFileSync(
-      resolve("scripts/guards/ci-release/check-ci-governance.mjs"),
+      resolve("scripts/guards/ci-release/check-ci-governance.mts"),
       "utf8"
     );
     expect(source).toContain('parsed.get("consumer-canary.yml")');
     expect(source).toContain("secrets.CONSUMER_CANARY_TOKEN");
-    expect(source).toContain("node scripts/release/consumer-canary.mjs");
+    expect(source).toContain("node scripts/release/consumer-canary.mts");
   });
 
   it("scans tracked exec-policy rule files only", () => {
     const source = ts.createSourceFile(
-      "check-codex-execpolicy.mjs",
-      readFileSync(resolve("scripts/guards/ci-release/check-codex-execpolicy.mjs"), "utf8"),
+      "check-codex-execpolicy.mts",
+      readFileSync(resolve("scripts/guards/ci-release/check-codex-execpolicy.mts"), "utf8"),
       ts.ScriptTarget.Latest,
       true,
-      ts.ScriptKind.JS
+      ts.ScriptKind.TS
     );
 
-    expect(namedImports(source, "../lib/repository.js")).toContain("gitTrackedFiles");
+    expect(namedImports(source, "../lib/repository.mts")).toContain("gitTrackedFiles");
     expect(callNames(source)).not.toContain("fs.readdirSync");
   });
 });

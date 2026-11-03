@@ -6,10 +6,10 @@ paths:
   - "CHANGELOG.md"
   - "action.yml"
   - ".github/workflows/release.yml"
-  - "scripts/release/changelog-notes.mjs"
-  - "scripts/release/preflight.mjs"
-  - "scripts/guards/ci-release/check-release-version-surfaces.mjs"
-  - "scripts/guards/check-all.mjs"
+  - "scripts/release/changelog-notes.mts"
+  - "scripts/release/preflight.mts"
+  - "scripts/guards/ci-release/check-release-version-surfaces.mts"
+  - "scripts/guards/check-all.mts"
   - "AGENTS.md"
 ---
 
@@ -35,7 +35,7 @@ Every eligible `main` push also runs the `publish-next` job in `.github/workflow
 
 ## Release-note owner
 
-`CHANGELOG.md` is the canonical release-note owner for npm and GitHub releases. The top entry for `package.json` `version` must be `## <version> (YYYY-MM-DD)` and must contain non-empty, user-readable notes. `scripts/release/changelog-notes.mjs` extracts that entry for GitHub Release creation; do not use GitHub auto-generated release notes as the published release body.
+`CHANGELOG.md` is the canonical release-note owner for npm and GitHub releases. The top entry for `package.json` `version` must be `## <version> (YYYY-MM-DD)` and must contain non-empty, user-readable notes. `scripts/release/changelog-notes.mts` extracts that entry for GitHub Release creation; do not use GitHub auto-generated release notes as the published release body.
 
 Changesets may collect PR-local release intent and may drive `npm run release:version`, but after versioning the generated top `CHANGELOG.md` entry is the source of truth. If `CHANGELOG.md`, GitHub Release notes, npm version, package metadata, or `action.yml` disagree, fix the canonical release transaction before publishing or repairing a release.
 
@@ -65,14 +65,14 @@ When the user asks to stage, commit, push, or create a PR after a version bump, 
 
 ## Enforced by
 
-- `npm run guard:release-version` (`scripts/guards/ci-release/check-release-version-surfaces.mjs`) asserts that:
+- `npm run guard:release-version` (`scripts/guards/ci-release/check-release-version-surfaces.mts`) asserts that:
   - `package.json`, `package-lock.json`, and the lockfile root package version agree;
   - the first `CHANGELOG.md` version heading matches the package version, uses an ISO date, and contains release notes;
   - `action.yml` leaves `inputs.version.default` unset so the runner defaults from `package.json`;
   - the action validation message tells users to use an exact npm version without copying the current version.
-- `scripts/release/preflight.mjs` repeats the package, lockfile, and changelog release-note checks before the release workflow decides whether to publish npm or repair GitHub Release state.
-- `.github/workflows/release.yml` creates GitHub Releases with `--notes-file` from `scripts/release/changelog-notes.mjs`, not `--generate-notes`.
-- `npm run guard` runs `guard:release-version` through `scripts/guards/check-all.mjs`.
+- `scripts/release/preflight.mts` repeats the package, lockfile, and changelog release-note checks before the release workflow decides whether to publish npm or repair GitHub Release state.
+- `.github/workflows/release.yml` creates GitHub Releases with `--notes-file` from `scripts/release/changelog-notes.mts`, not `--generate-notes`.
+- `npm run guard` runs `guard:release-version` through `scripts/guards/check-all.mts`.
 - `tests/release/action.test.ts` verifies the composite action default follows `package.json` and does not drift to npm dist-tags.
 - Snapshot publishing is the one permitted dist-tag write: the release.yml `publish-next` job publishes immutable `X.Y.(Z+1)-dev.<sha>` builds to the `next` tag from protected `main` pushes. The `latest` tag remains release.yml `publish`-job-only, and consuming a snapshot always resolves to an exact version before install; dist-tags remain forbidden for action execution.
 - The release checklist and release PR checklist require `$update` after versioning and before release verification or merge. The audit is semantic and is reviewed through its changed owners and validation evidence; do not add a forgeable marker file or brittle prose guard to simulate execution proof.

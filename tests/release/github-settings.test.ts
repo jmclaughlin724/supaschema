@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const script = resolve("scripts/github/audit-settings.mjs");
+const script = resolve("scripts/github/audit-settings.mts");
 const policy = JSON.parse(readFileSync(resolve(".github/repo-policy.json"), "utf8"));
 const repo = policy.repositoryFullName;
 

@@ -7,12 +7,12 @@ import type {
   SchemaShapes,
 } from "./model.js";
 import {
+  chaseColumnType,
   computedRelationshipFunctions,
   functionReturnsMultipleRows,
   isDeclaredDomainType,
   isNonWritableColumn,
   isOptionalInsertColumn,
-  resolveColumnType,
   sortedByName,
 } from "./model.js";
 
@@ -336,7 +336,7 @@ function emitConstants(lines: string[], schemas: [string, SchemaEntry][]): void 
 }
 
 function tsType(shapes: SchemaShapes, schema: string, sqlType: string): string {
-  const resolved = resolveColumnType(shapes, schema, sqlType);
+  const resolved = chaseColumnType(shapes, schema, sqlType);
   let mapped: string;
   if (resolved.kind === "enum" && resolved.enumRef) {
     mapped = databasePath(resolved.enumRef.schema, "Enums", resolved.enumRef.name);
@@ -571,7 +571,7 @@ function relationRowType(
   schema: string,
   sqlType: string
 ): { name: string; schema: string } | undefined {
-  const resolved = resolveColumnType(shapes, schema, sqlType);
+  const resolved = chaseColumnType(shapes, schema, sqlType);
   if (resolved.arrayDepth > 0 || isDeclaredDomainType(shapes, schema, sqlType)) {
     return;
   }

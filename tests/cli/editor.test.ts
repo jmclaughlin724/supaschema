@@ -63,10 +63,11 @@ describe("public agent and editor surfaces", () => {
         .sort((left, right) => left.localeCompare(right))
     );
     expect(stageableFiles(privateFiles)).toEqual([]);
-    expect(existsSync(resolve(root, "cclsp.json"))).toBe(true);
-    expect(ignoredFiles(["cclsp.json"])).toEqual([]);
+    expect(existsSync(resolve(root, "lsp-soleaux.json"))).toBe(true);
+    expect(ignoredFiles(["lsp-soleaux.json"])).toEqual([]);
     expect(
-      files.includes("cclsp.json") || stageableFiles(["cclsp.json"]).includes("cclsp.json")
+      files.includes("lsp-soleaux.json") ||
+        stageableFiles(["lsp-soleaux.json"]).includes("lsp-soleaux.json")
     ).toBe(true);
     const { heldPrivate: privatePrefixes } = readJson<{ heldPrivate: string[] }>(
       "scripts/guards/repo-surface/private-paths.json"

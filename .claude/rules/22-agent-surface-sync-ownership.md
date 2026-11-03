@@ -15,25 +15,25 @@ paths:
   - ".codex/rules/**"
   - "agent-bundle/**"
   - "scripts/guards/agent-surface/**"
-  - "scripts/skills/agent-surface-manifest.mjs"
-  - "scripts/skills/sync-llm.mjs"
+  - "scripts/skills/agent-surface-manifest.mts"
+  - "scripts/skills/sync-llm.mts"
 ---
 
 # Rule 22 - Generated agent-surface sync ownership
 
 ## Contract
 
-`scripts/skills/sync-llm.mjs` is the single idempotent writer for generated Claude-to-Codex, Claude-to-Agents, public-skill, and consumer-bundle outputs. Generated surfaces are never independent inputs.
+`scripts/skills/sync-llm.mts` is the single idempotent writer for generated Claude-to-Codex, Claude-to-Agents, public-skill, and consumer-bundle outputs. Generated surfaces are never independent inputs.
 
 Synchronization is always the actual write operation. There is no check-only sync command or read-only parity mode. Run `npm run sync:llm`; content-identical writes are skipped.
 
-Synchronization is explicit. No hook, lifecycle event, or Git hook runs the writer automatically. Run `npm run sync:llm` after editing a canonical source, or let `npm run guard:agent` run it for you; `scripts/guards/check-all.mjs` fails when the writer changes a tracked generated surface, so drift is caught before merge rather than repaired mid-edit.
+Synchronization is explicit. No hook, lifecycle event, or Git hook runs the writer automatically. Run `npm run sync:llm` after editing a canonical source, or let `npm run guard:agent` run it for you; `scripts/guards/check-all.mts` fails when the writer changes a tracked generated surface, so drift is caught before merge rather than repaired mid-edit.
 
 ## Ownership
 
 - `.claude/settings.json` owns source Claude hook registration.
 - `.claude/hooks/**`, `.claude/rules/**`, `.claude/skills/**`, and `.claude/agents/**` own their generated projections.
-- `scripts/skills/agent-surface-manifest.mjs` owns canonical source roots, exact source files where ownership is singular, applicable source file types, and targets. The only agent prompt input is `.agents/prompts/supaschema-install.md`; sibling prompt files are unrelated.
+- `scripts/skills/agent-surface-manifest.mts` owns canonical source roots, exact source files where ownership is singular, applicable source file types, and targets. The only agent prompt input is `.agents/prompts/supaschema-install.md`; sibling prompt files are unrelated.
 - Parsed skill frontmatter with `metadata.public: true` owns public skill publication; no separate skill-name list exists.
 - `.codex/config.toml` remains a direct runtime owner and is not generated.
 - Consumer templates contain only the Supaschema generated-artifact protection and schema-write workflow hooks.
@@ -50,10 +50,10 @@ Synchronization is explicit. No hook, lifecycle event, or Git hook runs the writ
 ## Enforcement chain
 
 - `npm run guard:agent` runs the actual sync writer before topology and import-closure guards.
-- `scripts/guards/check-all.mjs` runs the writer and fails when a tracked generated surface changes, so drift blocks the umbrella gate.
-- `scripts/guards/agent-surface/check-agent-hooks.mjs` owns exact registration and consumer-template topology, and rejects any hook that runs surface sync.
-- `scripts/guards/toolchain/check-tooling-stack.mjs` rejects a lefthook pre-commit job that runs `sync:llm`.
-- `scripts/guards/agent-surface/check-hook-import-graph.mjs` owns runtime import closure.
+- `scripts/guards/check-all.mts` runs the writer and fails when a tracked generated surface changes, so drift blocks the umbrella gate.
+- `scripts/guards/agent-surface/check-agent-hooks.mts` owns exact registration and consumer-template topology, and rejects any hook that runs surface sync.
+- `scripts/guards/toolchain/check-tooling-stack.mts` rejects a lefthook pre-commit job that runs `sync:llm`.
+- `scripts/guards/agent-surface/check-hook-import-graph.mts` owns runtime import closure.
 - Focused tests under `tests/agent-hooks/**` own writer idempotence, runtime decisions, and consumer projections.
 
 ## Verification
@@ -70,7 +70,7 @@ For consumer-boundary changes, also run `npm run guard:public-surface` and `npm 
 
 If sync, writer, or registration validation fails:
 
-1. Identify whether the failure is in a canonical source (`.claude/hooks/**`, `.claude/rules/**`, `.claude/skills/**`, `.claude/agents/**`, `.claude/settings.json`), the manifest (`scripts/skills/agent-surface-manifest.mjs`), or the writer (`scripts/skills/sync-llm.mjs`).
+1. Identify whether the failure is in a canonical source (`.claude/hooks/**`, `.claude/rules/**`, `.claude/skills/**`, `.claude/agents/**`, `.claude/settings.json`), the manifest (`scripts/skills/agent-surface-manifest.mts`), or the writer (`scripts/skills/sync-llm.mts`).
 2. Fix the canonical source or the manifest's source roots and exact files first. Never hand-edit `.codex/hooks.json`, `.codex/hooks/**`, `.codex/rules/**`, `.codex/agents/**`, `.agents/skills/**`, public `skills/**`, or `agent-bundle/**`.
 3. Re-run `npm run sync:llm`. A content-identical write is a no-op, so a persistent diff after rerunning means the source or manifest fix was incomplete.
 4. Re-run `npm run guard:agent` so the topology and import-closure guards prove the projection against the regenerated targets.

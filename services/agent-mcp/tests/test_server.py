@@ -242,12 +242,12 @@ def test_private_roots_track_canonical_owner() -> None:
 
 async def test_read_context_file_reads_tracked_stripe_catalog_tooling() -> None:
 
-    assert (REPO_ROOT / "scripts/stripe/create-catalog.mjs").is_file()
+    assert (REPO_ROOT / "scripts/stripe/create-catalog.mts").is_file()
 
     async with Client(transport=mcp) as client:
-        payload = await _read_context(client, "scripts/stripe/create-catalog.mjs")
+        payload = await _read_context(client, "scripts/stripe/create-catalog.mts")
 
-    assert payload["path"] == "scripts/stripe/create-catalog.mjs"
+    assert payload["path"] == "scripts/stripe/create-catalog.mts"
     assert "recommendedCatalog" in payload["text"]
 
 

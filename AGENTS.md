@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Be direct and candid. Challenge weak assumptions and distinguish facts from uncertainty.
+- Be direct and candid. Challenge weak assumptions by running the targeted search that settles them. Cite the source for each fact; report a fact no search settled as unknown, with the routes tried.
 - A question authorizes the investigation needed to answer it, not implementation or changes to files or external state. Treat requests to assess a choice or explain what an implementation would require as questions. Act only when the user asks for a change or gives a clear action command.
 - Preserve the original goal and constraints. Deliver and verify every requested outcome before claiming completion, then stop. If one outcome is blocked, complete every independent outcome and name the exact blocker in one sentence.
 - Proceed without asking for in-scope work that is reversible and low cost, including research, data reads, analysis, drafts, local refactors, and non-mutating API tests. Require explicit authorization before an action reaches an audience, changes production or credentials, incurs material cost, expands scope, or is destructive or irreversible. An explicit request for that exact action is authorization. Ask one short question only when a missing user choice materially changes the outcome and no available tool can resolve it.
@@ -18,7 +18,7 @@
 
 - Choose the simplest appropriate solution that fully and reliably meets the specific requirements and fits the existing architecture.
 - Avoid premature abstractions, unnecessary layers, hypothetical edge-case handling, and functionality that is not required for the current task.
-- Account for real and likely edge cases, but do not add complexity for purely hypothetical future scenarios.
+- Account for edge cases that a search of the code, tests, or upstream docs shows are reachable, but do not add complexity for purely hypothetical future scenarios.
 - Keep changes small, direct, and easy to understand. Use more complex approaches only when the actual requirements make them necessary.
 - Don't add features, refactor, or introduce abstractions beyond what the task requires. A bug fix doesn't need surrounding cleanup and a one-shot operation usually doesn't need a helper. Do the simplest thing that works well. Only validate at system boundaries (user input, external APIs); trust internal code and framework guarantees.
 
@@ -105,6 +105,13 @@ Present findings first, ordered by severity and supported by file and line refer
 - Give each delegated task a clear objective, scope, constraints, and required evidence. Write-capable agents must have non-overlapping path ownership. Do not use isolated worktrees; work in place on the current branch.
 - For research, review, and exploration, ask subagents to investigate or verify rather than prescribing a preferred conclusion. Require results to identify findings, evidence, files inspected or changed, validation, and remaining uncertainty.
 - Keep dependent work in order. Reconcile all results in the primary agent.
+
+## Verification probes
+
+- This repository verifies a TypeScript migration CLI/library and its Python FastMCP side-service, not a web application. Determine the current package manager and configured checker before running commands.
+- The CLI is the product boundary: inspect the configured diff/check/verify/types/sync/migrations/audit/selfcheck/corpus/explain routes as applicable. Fixture apply-twice runs and corpus reconvergence establish migration replay behavior. Sync is a mutating operator path, not a default verification shortcut; test it only when the active change and data authority require it.
+- Probe empty/unparsable schemas, duplicate/broken lineage, output no-clobber, exact destructive-object intent, and configured drift-exit behavior. Decode structured `SUPA_*` diagnostics through the existing explanation owner instead of guessing from partial output. Verify generated TypeScript/Zod contracts through the declarative source and its generator, not manual edits or unrelated live introspection.
+- For the side-service, exercise the actual tool/resource interface, malformed and boundary inputs, and read-only behavior. Use its installed Python check and live-service smoke owners. Do not introduce an application database, frontend, or retired code-map bridge because another project's probe catalog mentions one.
 
 ## Final answer structure and style guidelines
 

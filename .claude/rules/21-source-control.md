@@ -165,8 +165,8 @@ paths:
   - ".gitattributes"
   - ".claude/rules/21-source-control.md"
   - "scripts/github/**"
-  - "scripts/guards/ci-release/check-github-process.mjs"
-  - "scripts/guards/check-all.mjs"
+  - "scripts/guards/ci-release/check-github-process.mts"
+  - "scripts/guards/check-all.mts"
   - "package.json"
   - "AGENTS.md"
   - "CLAUDE.md"
@@ -236,7 +236,7 @@ This rule owns `.gitignore` content policy. Repo surfaces stay tracked or stay o
 - `.gitignore` covers only build artifacts, env/secret files, OS noise, agent session/personal state (`.claude/plans`, `.claude/agents/`, `.codex/agents/`, `.claude/scheduled_tasks.lock`, `.claude/settings.local.json`), editor state (`.vscode/`), and the held business-sensitive set: `advisor-plans/`, `.planning/`. Publishing a held path is an irreversible public-repo exposure and requires an explicit user decision in the same change. The tracked nested `docs/.gitignore` owns Blume build output (`.blume/`, `.blume-verify/`, `dist/`) for the private docs package.
 - `scripts/guards/repo-surface/private-paths.json` is the machine-readable owner of the private-path set, in two buckets: `heldPrivate` (never public, never agent-MCP-readable: `advisor-plans/`, `.planning/`) and `agentPrivate` (public-repo-private user state: `.claude/plans/`, `.claude/agents/`, `.codex/agents/`, `.vscode/`). The repo-surface guard and the agent-MCP `repo_context_query` read path both consume this file; do not maintain a third private-path list anywhere else.
 - `.gitignore` MUST NOT hide source surfaces that tracked files reference. Wired maintainer tooling stays tracked: `services/agent-mcp/`, `services/license-worker/`, `scripts/stripe/`, `wrangler.toml`, `pyproject.toml`, `uv.lock`, `fastmcp.json`, `.mcp.json`, `.codex/config.toml`, and `.github/workflows/python.yml`.
-- `scripts/guards/repo-surface/check-public-repo-surface.mjs` enforces both invariants: held-private paths are never tracked or stageable, and wired tooling present on disk is always tracked. Changing either set means updating `private-paths.json`, `.gitignore`, the guard, its tests, and this rule in the same change.
+- `scripts/guards/repo-surface/check-public-repo-surface.mts` enforces both invariants: held-private paths are never tracked or stageable, and wired tooling present on disk is always tracked. Changing either set means updating `private-paths.json`, `.gitignore`, the guard, its tests, and this rule in the same change.
 - The `.agents/.claude/.codex` ignore-with-unignore pattern is the deliberate privacy filter for the local skills library (the 2026-06 public-surface reduction); do not collapse it without an explicit user decision.
 
 ## Pull-request workflow
@@ -283,9 +283,9 @@ Address every PR review comment and failing check before merge, and mark each re
 
 ## Enforced by
 
-- `npm run guard:github-process` (`scripts/guards/ci-release/check-github-process.mjs`) asserts the policy file, package commands, canonical Rule 21 path, and retired duplicate rule paths stay synchronized.
-- `npm run guard` runs `guard:github-process` through `scripts/guards/check-all.mjs`.
-- `npm run github:audit-settings` (`scripts/github/audit-settings.mjs`) compares live GitHub repository settings, Actions permissions, `main` branch protection, repository rulesets, and topics to `.github/repo-policy.json`.
+- `npm run guard:github-process` (`scripts/guards/ci-release/check-github-process.mts`) asserts the policy file, package commands, canonical Rule 21 path, and retired duplicate rule paths stay synchronized.
+- `npm run guard` runs `guard:github-process` through `scripts/guards/check-all.mts`.
+- `npm run github:audit-settings` (`scripts/github/audit-settings.mts`) compares live GitHub repository settings, Actions permissions, `main` branch protection, repository rulesets, and topics to `.github/repo-policy.json`.
 - `.github/PULL_REQUEST_TEMPLATE.md` records the short operator checklist for PR authors and reviewers.
 
 ## Verification

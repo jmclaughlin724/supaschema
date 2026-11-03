@@ -2,7 +2,7 @@
 description: Canonical comparison for normalized paths and other normalized domains.
 paths:
   - "src/paths.ts"
-  - "scripts/guards/code-shape/check-path-comparison.mjs"
+  - "scripts/guards/code-shape/check-path-comparison.mts"
   - "tests/**/paths*.test.ts"
 ---
 
@@ -32,7 +32,7 @@ This repo supports Node 22 and Node 24. A path check that relies on `path.relati
 ## Enforced by
 
 - `tests/core/paths.test.ts`: explicit overlap/containment cases plus `fast-check` property tests: symmetry, and invariance under trailing-separator and `./`-prefix normalization.
-- `scripts/guards/code-shape/check-path-comparison.mjs` (in `npm run guard`) — AST-scans all tracked JS/TS (`.ts`/`.mts`/`.mjs`/`.js`/`.cjs`, excluding `src/paths.ts`) and fails on any `relative(...)` compared `=== ""` / `!== ""`, directly or via a same-file variable. Emits `PATH_COMPARISON_OK`.
+- `scripts/guards/code-shape/check-path-comparison.mts` (in `npm run guard`) — AST-scans all tracked JS/TS (`.ts`/`.mts`/`.mjs`/`.js`/`.cjs`, excluding `src/paths.ts`) and fails on any `relative(...)` compared `=== ""` / `!== ""`, directly or via a same-file variable. Emits `PATH_COMPARISON_OK`.
 - Review: a path-containment or overlap change that does not route through `src/paths.ts` or does not add an equivalence-class row is incomplete.
 
 ## Verification

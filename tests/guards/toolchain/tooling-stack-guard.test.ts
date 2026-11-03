@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { check } from "../../../scripts/guards/toolchain/check-tooling-stack.mjs";
+import { check } from "../../../scripts/guards/toolchain/check-tooling-stack.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 const biomePresets = [
@@ -24,13 +24,12 @@ const packageConfigSchema = z
     overrides: z
       .object({
         "@typescript/old": z.string(),
-        cclsp: z.object({ typescript: z.string() }),
       })
       .passthrough(),
     scripts: z.record(z.string(), z.string()),
   })
   .passthrough();
-const cclspConfigSchema = z.object({
+const lspSoleauxConfigSchema = z.object({
   servers: z.array(
     z
       .object({
@@ -60,7 +59,6 @@ function validPackage() {
       "@biomejs/biome": "2.5.5",
       "@typescript/native": "npm:typescript@7.0.2",
       "@vitest/coverage-v8": "4.1.10",
-      cclsp: "0.7.0",
       prettier: "3.9.6",
       "prettier-plugin-astro": "0.14.1",
       ultracite: "7.9.4",
@@ -69,22 +67,19 @@ function validPackage() {
     files: ["agent-bundle", "bin/config-contract.mjs", "bin/scaffold.mjs"],
     overrides: {
       "@typescript/old": "npm:typescript@6.0.2",
-      cclsp: {
-        typescript: "$typescript",
-      },
     },
     scripts: {
       "bench:plot:headtohead":
         "node benchmarks/plot-head-to-head.js && npm run format -- docs/images/benchmarks",
       diagrams: "node benchmarks/plot-concepts.js && npm run format -- docs/images/concepts",
-      format: "node scripts/format.mjs",
+      format: "node scripts/format.mts",
       "format:json": "sort-package-json",
       "format:md": 'prettier --write "**/*.{astro,md,mdx,yml,yaml}"',
       "format:md:check": 'prettier --check "**/*.{astro,md,mdx,yml,yaml}"',
-      "format:sh": "node scripts/format-sh.mjs",
-      "format:toml": "node scripts/format-toml.mjs",
-      lint: "node scripts/lint.mjs",
-      "lint:ci": "node scripts/lint.mjs --ci",
+      "format:sh": "node scripts/format-sh.mts",
+      "format:toml": "node scripts/format-toml.mts",
+      lint: "node scripts/lint.mts",
+      "lint:ci": "node scripts/lint.mts --ci",
       "lint:doctor": "ultracite doctor",
       "py:fix":
         "uv run --package supaschema-agent-mcp ruff check --fix services/agent-mcp && uv run --package supaschema-agent-mcp ruff format services/agent-mcp",
@@ -145,7 +140,7 @@ function validFiles() {
       overrides: [],
       vcs: { useIgnoreFile: true },
     }),
-    "cclsp.json": JSON.stringify({
+    "lsp-soleaux.json": JSON.stringify({
       servers: [
         {
           command: ["uv", "run", "pylsp"],
@@ -158,7 +153,7 @@ function validFiles() {
         {
           command: [
             "node",
-            "scripts/cclsp-language-id-proxy.mjs",
+            "scripts/cclsp-language-id-proxy.mts",
             "--",
             "npx",
             "--no-install",
@@ -197,9 +192,9 @@ metadata:
   useTabs: false,
 };
 `,
-    "scripts/cclsp-language-id-proxy.mjs": "export {};\n",
-    "scripts/format.mjs": "export {};\n",
-    "scripts/lint.mjs": "export {};\n",
+    "scripts/cclsp-language-id-proxy.mts": "export {};\n",
+    "scripts/format.mts": "export {};\n",
+    "scripts/lint.mts": "export {};\n",
     "lefthook.yml": `pre-commit:
   piped: true
   jobs:
@@ -300,7 +295,7 @@ describe("tooling stack guard", () => {
 
   it("requires both npm-owned Ultracite wrappers", () => {
     const root = fixture((files) => {
-      Reflect.deleteProperty(files, "scripts/lint.mjs");
+      Reflect.deleteProperty(files, "scripts/lint.mts");
     });
     expect(() => check(root)).toThrow("npm-owned Ultracite lint wrapper must exist");
   });
@@ -421,15 +416,6 @@ describe("tooling stack guard", () => {
     expect(() => check(root)).toThrow("TypeScript 6 compatibility package");
   });
 
-  it("requires the CCLSP peer override", () => {
-    const root = fixture((files) => {
-      const packageJson = packageConfigSchema.parse(JSON.parse(files["package.json"] ?? "{}"));
-      packageJson.overrides.cclsp.typescript = "^5.8.3";
-      files["package.json"] = JSON.stringify(packageJson);
-    });
-    expect(() => check(root)).toThrow("map cclsp's stale TypeScript peer");
-  });
-
   it("pins the compatibility compiler implementation", () => {
     const root = fixture((files) => {
       const packageJson = packageConfigSchema.parse(JSON.parse(files["package.json"] ?? "{}"));
@@ -441,36 +427,36 @@ describe("tooling stack guard", () => {
 
   it("runs pylsp from the locked uv workspace", () => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       const pythonServer = config.servers.find((server) => server.extensions?.includes("py"));
       if (pythonServer) {
         pythonServer.command = ["pylsp"];
       }
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("run pylsp from the locked uv workspace");
   });
 
   it("requires the upstream pylsp restart interval", () => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       const pythonServer = config.servers.find((server) => server.extensions?.includes("py"));
       if (pythonServer) {
         pythonServer.restartInterval = 0;
       }
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("auto-restart pylsp every 5 minutes");
   });
 
-  it("rejects cclsp's incompatible pylsp settings wrapper", () => {
+  it("rejects incompatible pylsp settings wrapper", () => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       const pythonServer = config.servers.find((server) => server.extensions?.includes("py"));
       if (pythonServer) {
         pythonServer.initializationOptions = { settings: { pylsp: {} } };
       }
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("directly through initializationOptions.pylsp");
   });
@@ -481,33 +467,33 @@ describe("tooling stack guard", () => {
     ["string", "enabled"],
   ])("rejects %s direct pylsp options", (_kind, pylspOptions) => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       const pythonServer = config.servers.find((server) => server.extensions?.includes("py"));
       if (pythonServer) {
         pythonServer.initializationOptions = { pylsp: pylspOptions };
       }
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("as an object directly through initializationOptions.pylsp");
   });
 
   it("rejects inline CCLSP package versions", () => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       config.servers.push({ command: ["npx", "--no-install", "yaml-language-server@1.24.0"] });
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("must not duplicate package versions");
   });
 
   it("rejects static tsserver configuration", () => {
     const root = fixture((files) => {
-      const config = cclspConfigSchema.parse(JSON.parse(files["cclsp.json"] ?? "{}"));
+      const config = lspSoleauxConfigSchema.parse(JSON.parse(files["lsp-soleaux.json"] ?? "{}"));
       const javascriptServer = config.servers.find((server) => server.extensions?.includes("mjs"));
       if (javascriptServer) {
         javascriptServer.initializationOptions = { tsserver: { path: "legacy/tsserver.js" } };
       }
-      files["cclsp.json"] = JSON.stringify(config);
+      files["lsp-soleaux.json"] = JSON.stringify(config);
     });
     expect(() => check(root)).toThrow("let the TypeScript proxy inject the tsserver path");
   });

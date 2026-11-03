@@ -1,0 +1,190 @@
+{
+  "servers": [
+    {
+      "extensions": ["py", "pyi"],
+      "command": ["uv", "run", "pylsp"],
+      "rootDir": ".",
+      "restartInterval": 5,
+      "initializationOptions": {
+        "pylsp": {
+          "plugins": {
+            "ruff": {
+              "enabled": true,
+              "formatEnabled": true,
+              "format": ["I"],
+              "lineLength": 100,
+              "extendIgnore": ["E501", "E203"]
+            },
+            "pylsp_rope": {
+              "enabled": true,
+              "rename": true
+            },
+            "pyls_memestra": {
+              "enabled": true
+            },
+            "pycodestyle": {
+              "enabled": false
+            },
+            "pyflakes": {
+              "enabled": false
+            },
+            "mccabe": {
+              "enabled": false
+            },
+            "autopep8": {
+              "enabled": false
+            },
+            "yapf": {
+              "enabled": false
+            },
+            "flake8": {
+              "enabled": false
+            },
+            "pylint": {
+              "enabled": false
+            },
+            "pydocstyle": {
+              "enabled": false
+            }
+          },
+          "signature": {
+            "formatter": "ruff"
+          }
+        }
+      }
+    },
+    {
+      "extensions": ["ts", "tsx", "mts", "js", "jsx", "mjs", "cjs"],
+      "command": [
+        "node",
+        "scripts/cclsp-language-id-proxy.mts",
+        "--",
+        "npx",
+        "--no-install",
+        "typescript-language-server",
+        "--stdio"
+      ],
+      "rootDir": ".",
+      "initializationOptions": {
+        "preferences": {
+          "includeInlayParameterNameHints": "all",
+          "includeInlayParameterNameHintsWhenArgumentMatchesName": true,
+          "includeInlayFunctionParameterTypeHints": true,
+          "includeInlayVariableTypeHints": true,
+          "includeInlayPropertyDeclarationTypeHints": true,
+          "includeInlayFunctionLikeReturnTypeHints": true,
+          "includeInlayEnumMemberValueHints": true
+        }
+      }
+    },
+    {
+      "extensions": ["astro"],
+      "command": ["npx", "--no-install", "astro-ls", "--stdio"],
+      "rootDir": ".",
+      "initializationOptions": {
+        "typescript": {
+          "tsdk": "node_modules/typescript/lib"
+        }
+      }
+    },
+    {
+      "extensions": ["sql"],
+      "command": [
+        "npx",
+        "--no-install",
+        "postgres-language-server",
+        "lsp-proxy"
+      ],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["json", "jsonc"],
+      "command": [
+        "npx",
+        "--no-install",
+        "vscode-json-language-server",
+        "--stdio"
+      ],
+      "rootDir": ".",
+      "initializationOptions": {
+        "provideFormatter": false,
+        "handledSchemaProtocols": ["http", "https", "file"]
+      }
+    },
+    {
+      "extensions": ["css", "scss", "less"],
+      "command": [
+        "npx",
+        "--no-install",
+        "vscode-css-language-server",
+        "--stdio"
+      ],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["html"],
+      "command": [
+        "npx",
+        "--no-install",
+        "vscode-html-language-server",
+        "--stdio"
+      ],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["yml", "yaml"],
+      "command": ["npx", "--no-install", "yaml-language-server", "--stdio"],
+      "rootDir": ".",
+      "initializationOptions": {
+        "settings": {
+          "yaml": {
+            "validate": true,
+            "hover": true,
+            "completion": true,
+            "format": {
+              "enable": false
+            },
+            "schemaStore": {
+              "enable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "extensions": ["sh", "bash", "inc", "command", "bats"],
+      "command": ["npx", "--no-install", "bash-language-server", "start"],
+      "rootDir": ".",
+      "initializationOptions": {
+        "settings": {
+          "bashIde": {
+            "globPattern": "**/*@(.sh|.inc|.bash|.command|.bats)",
+            "shellcheckExternalSources": false,
+            "includeAllWorkspaceSymbols": true,
+            "explainshellEndpoint": ""
+          }
+        }
+      }
+    },
+    {
+      "extensions": ["toml"],
+      "command": ["npx", "--no-install", "taplo", "lsp", "stdio"],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["md", "markdown", "mdx", "rules"],
+      "command": [
+        "npx",
+        "--no-install",
+        "vscode-markdown-language-server",
+        "--stdio"
+      ],
+      "rootDir": "."
+    },
+    {
+      "extensions": ["dockerfile"],
+      "command": ["npx", "--no-install", "docker-langserver", "--stdio"],
+      "rootDir": "."
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { main as formatMain, validateFormatTargets } from "../scripts/format.mjs";
+import { main as formatMain, validateFormatTargets } from "../scripts/format.mts";
 import {
   collectRepoFiles,
   isRepositoryContextPath,
@@ -11,8 +11,8 @@ import {
   LOCAL_REPOSITORY_FILES,
   LOCAL_REPOSITORY_PREFIXES,
   REPOSITORY_DENY_SEGMENTS,
-} from "../scripts/lib/repo-files.mjs";
-import { main as lintMain, parseLintArguments } from "../scripts/lint.mjs";
+} from "../scripts/lib/repo-files.mts";
+import { main as lintMain, parseLintArguments } from "../scripts/lint.mts";
 
 const temporaryRoots: string[] = [];
 
@@ -75,7 +75,7 @@ describe("formatter file discovery", () => {
   it("keeps local repository and Biome inventory in the shared file owner", () => {
     expect(LOCAL_BIOME_PATHS).toEqual([".claude/skills", ".claude/settings.local.json", ".vscode"]);
     expect(LOCAL_REPOSITORY_FILES).toEqual(
-      expect.arrayContaining([".mcp.json", "biome.jsonc", "cclsp.json", "fastmcp.json"])
+      expect.arrayContaining([".mcp.json", "biome.jsonc", "lsp-soleaux.json", "fastmcp.json"])
     );
     expect(LOCAL_REPOSITORY_PREFIXES).toEqual(
       expect.arrayContaining(["scripts/", "services/", ".claude/rules/"])

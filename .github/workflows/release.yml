@@ -38,7 +38,7 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release/preflight.mjs
+        run: node scripts/release/preflight.mts
 
   publish:
     needs: preflight
@@ -77,7 +77,7 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release/preflight.mjs
+        run: node scripts/release/preflight.mts
       - name: Confirm npm supports OIDC trusted publishing
         if: steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_PUBLISH_NPM == 'true' || steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_PUBLISH_GITHUB_PACKAGE == 'true'
         run: |
@@ -118,13 +118,13 @@ jobs:
         if: steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_CREATE_GITHUB_RELEASE == 'true'
         run: |
           notes_file="$RUNNER_TEMP/release-notes.md"
-          node scripts/release/changelog-notes.mjs --version "$SUPASCHEMA_PACKAGE_VERSION" --out "$notes_file"
+          node scripts/release/changelog-notes.mts --version "$SUPASCHEMA_PACKAGE_VERSION" --out "$notes_file"
           echo "SUPASCHEMA_RELEASE_NOTES_FILE=$notes_file" >> "$GITHUB_ENV"
       - name: Prepare GitHub Packages tarball
         if: steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_PUBLISH_GITHUB_PACKAGE == 'true'
         id: github-pack
         run: |
-          github_tarball="$(node scripts/release/github-package-tarball.mjs --tarball "$SUPASCHEMA_TARBALL" --pack-destination "$RUNNER_TEMP")"
+          github_tarball="$(node scripts/release/github-package-tarball.mts --tarball "$SUPASCHEMA_TARBALL" --pack-destination "$RUNNER_TEMP")"
           echo "SUPASCHEMA_GITHUB_PACKAGE_TARBALL=$github_tarball" >> "$GITHUB_ENV"
           echo "tarball_path=$github_tarball" >> "$GITHUB_OUTPUT"
       - if: steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_PUBLISH_NPM == 'true'
@@ -206,7 +206,7 @@ jobs:
       # Stamp before build so dist/build-info.json carries the snapshot version.
       - name: Stamp snapshot version
         id: snapshot
-        run: node scripts/release/snapshot-version.mjs >> "$GITHUB_OUTPUT"
+        run: node scripts/release/snapshot-version.mts >> "$GITHUB_OUTPUT"
       - run: npm run build
       - run: npm run check:package
       - name: Prepare alternative package managers
@@ -250,4 +250,4 @@ jobs:
       - name: Registry smoke against the immutable snapshot version
         env:
           SUPASCHEMA_REGISTRY_SMOKE_SPEC: supaschema@${{ steps.snapshot.outputs.version }}
-        run: node scripts/release/registry-smoke.mjs
+        run: node scripts/release/registry-smoke.mts

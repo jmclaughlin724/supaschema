@@ -37,13 +37,13 @@ describe("registered hook topology", () => {
       ].sort()
     );
     expect(settings.hooks.WorktreeCreate).toBeUndefined();
-    expect(matcherFor(settings, "PreToolUse", "context-pre-tool-use.mjs")).toBe(
+    expect(matcherFor(settings, "PreToolUse", "context-pre-tool-use.mts")).toBe(
       governedToolMatcher
     );
-    expect(matcherFor(settings, "PostToolUse", "context-post-tool-use.mjs")).toBe(
+    expect(matcherFor(settings, "PostToolUse", "context-post-tool-use.mts")).toBe(
       "Bash|Read|Skill"
     );
-    expect(matcherFor(settings, "PostToolUseFailure", "context-post-tool-use-failure.mjs")).toBe(
+    expect(matcherFor(settings, "PostToolUseFailure", "context-post-tool-use-failure.mts")).toBe(
       "Bash"
     );
     expect(matcherFor(settings, "PreToolUse", "generated-artifact-edit")).toBe(
@@ -53,7 +53,7 @@ describe("registered hook topology", () => {
       "Write|Edit|MultiEdit|apply_patch"
     );
     expect(JSON.stringify(settings.hooks.PostToolUse)).not.toContain("sync-llm");
-    expect(JSON.stringify(settings.hooks.TaskCompleted)).toContain("context-task-completed.mjs");
+    expect(JSON.stringify(settings.hooks.TaskCompleted)).toContain("context-task-completed.mts");
     expect(JSON.stringify(settings.hooks.PostToolUseFailure)).not.toContain("sync-llm");
     expect(JSON.stringify(settings.hooks.Stop)).not.toContain("sync-llm");
   });
@@ -76,8 +76,8 @@ describe("registered hook topology", () => {
     expect(config.hooks.PostToolUseFailure).toBeUndefined();
     expect(config.hooks.TaskCompleted).toBeUndefined();
     expect(config.hooks.WorktreeCreate).toBeUndefined();
-    expect(matcherFor(config, "PreToolUse", "context-pre-tool-use.mjs")).toBe(governedToolMatcher);
-    expect(matcherFor(config, "PostToolUse", "context-post-tool-use.mjs")).toBe("Bash|Read|Skill");
+    expect(matcherFor(config, "PreToolUse", "context-pre-tool-use.mts")).toBe(governedToolMatcher);
+    expect(matcherFor(config, "PostToolUse", "context-post-tool-use.mts")).toBe("Bash|Read|Skill");
     expect(matcherFor(config, "PreToolUse", "generated-artifact-edit")).toBe("apply_patch");
     expect(matcherFor(config, "PostToolUse", "hook schema-write")).toBe("apply_patch");
     expect(JSON.stringify(config.hooks.PostToolUse)).not.toContain("sync-llm");
@@ -116,7 +116,7 @@ describe("registered hook topology", () => {
 
   it("has no check-only surface sync command", async () => {
     const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
-    const generator = await readFile(join(root, "scripts/skills/sync-llm.mjs"), "utf8");
+    const generator = await readFile(join(root, "scripts/skills/sync-llm.mts"), "utf8");
 
     expect(Object.keys(manifest.scripts).filter((name) => name.startsWith("sync:llm"))).toEqual([
       "sync:llm",
@@ -131,7 +131,7 @@ describe("actual context hook entrypoints", () => {
     timeout: 20_000,
   }, async () => {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-runtime-state-"));
-    const hook = join(root, ".claude", "hooks", "context-pre-tool-use.mjs");
+    const hook = join(root, ".claude", "hooks", "context-pre-tool-use.mts");
     const env = hookEnvironment("claude", { STATE_DIR: stateDir });
 
     const git = await runHook(
@@ -171,9 +171,9 @@ describe("actual context hook entrypoints", () => {
       const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-disabled-state-"));
       const env = hookEnvironment("codex", { STATE_DIR: stateDir });
       const hooks: readonly (readonly [hookName: string, stdout: string])[] = [
-        ["context-pre-tool-use.mjs", ""],
-        ["context-session-start.mjs", ""],
-        ["supaschema-source-hook.mjs", ""],
+        ["context-pre-tool-use.mts", ""],
+        ["context-session-start.mts", ""],
+        ["supaschema-source-hook.mts", ""],
       ];
 
       for (const [hookName, stdout] of hooks) {
@@ -187,7 +187,7 @@ describe("actual context hook entrypoints", () => {
   it("makes malformed input visible without denying the event", { timeout: 20_000 }, async () => {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-malformed-"));
     const result = await runRawHook(
-      join(root, ".claude/hooks/context-pre-tool-use.mjs"),
+      join(root, ".claude/hooks/context-pre-tool-use.mts"),
       "{not-json",
       hookEnvironment("claude", { STATE_DIR: stateDir })
     );
@@ -211,7 +211,7 @@ describe("actual context hook entrypoints", () => {
     };
 
     const start = await runHook(
-      join(root, ".claude/hooks/context-session-start.mjs"),
+      join(root, ".claude/hooks/context-session-start.mts"),
       { ...common, hook_event_name: "SessionStart", source: "startup" },
       env
     );
@@ -221,7 +221,7 @@ describe("actual context hook entrypoints", () => {
     ).toContain('"sessionId": "entrypoint-lifecycle"');
 
     const end = await runHook(
-      join(root, ".claude/hooks/context-session-end.mjs"),
+      join(root, ".claude/hooks/context-session-end.mts"),
       { ...common, hook_event_name: "SessionEnd", reason: "clear" },
       env
     );
@@ -242,7 +242,7 @@ describe("actual context hook entrypoints", () => {
     const skillPath = ".claude/skills/supaschema/SKILL.md";
 
     const prompt = await runHook(
-      join(root, ".claude/hooks/context-user-prompt-submit.mjs"),
+      join(root, ".claude/hooks/context-user-prompt-submit.mts"),
       {
         hook_event_name: "UserPromptSubmit",
         prompt: "$supaschema",
@@ -258,7 +258,7 @@ describe("actual context hook entrypoints", () => {
     const command = `cat ${skillPath}`;
     const recoveryStartedAt = Date.now();
     const load = await runHook(
-      join(root, ".claude/hooks/context-pre-tool-use.mjs"),
+      join(root, ".claude/hooks/context-pre-tool-use.mts"),
       {
         hook_event_name: "PreToolUse",
         session_id: sessionId,
@@ -270,7 +270,7 @@ describe("actual context hook entrypoints", () => {
     expect(hookOutput(load.stdout).hookSpecificOutput?.permissionDecision).toBeUndefined();
 
     const recorded = await runHook(
-      join(root, ".claude/hooks/context-post-tool-use.mjs"),
+      join(root, ".claude/hooks/context-post-tool-use.mts"),
       {
         hook_event_name: "PostToolUse",
         session_id: sessionId,
@@ -284,7 +284,7 @@ describe("actual context hook entrypoints", () => {
     expect(Date.now() - recoveryStartedAt).toBeLessThan(5000);
 
     const governed = await runHook(
-      join(root, ".claude/hooks/context-pre-tool-use.mjs"),
+      join(root, ".claude/hooks/context-pre-tool-use.mts"),
       {
         hook_event_name: "PreToolUse",
         session_id: sessionId,
@@ -322,7 +322,7 @@ describe("actual context hook entrypoints", () => {
 
       const startedAt = Date.now();
       const liveEnd = await runHook(
-        join(root, ".claude/hooks/context-session-end.mjs"),
+        join(root, ".claude/hooks/context-session-end.mts"),
         {
           cwd: root,
           hook_event_name: "SessionEnd",
@@ -350,7 +350,7 @@ describe("actual context hook entrypoints", () => {
     }
 
     const recoveredEnd = await runHook(
-      join(root, ".claude/hooks/context-session-end.mjs"),
+      join(root, ".claude/hooks/context-session-end.mts"),
       {
         cwd: root,
         hook_event_name: "SessionEnd",
@@ -369,7 +369,7 @@ describe("actual context hook entrypoints", () => {
   }, async () => {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-killed-waiters-"));
     const env = hookEnvironment("claude", { STATE_DIR: stateDir });
-    const hook = join(root, ".claude/hooks/context-pre-tool-use.mjs");
+    const hook = join(root, ".claude/hooks/context-pre-tool-use.mts");
     const sessionId = "killed-lock-waiters";
     const encodedSessionId = Buffer.from(sessionId).toString("base64url");
     const lockName = `${encodedSessionId}.json.lock`;
@@ -421,7 +421,7 @@ describe("actual context hook entrypoints", () => {
   }, async () => {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-hook-concurrent-state-"));
     const env = hookEnvironment("claude", { STATE_DIR: stateDir });
-    const hook = join(root, ".claude/hooks/context-post-tool-use.mjs");
+    const hook = join(root, ".claude/hooks/context-post-tool-use.mts");
     const sessionId = "concurrent-entrypoint";
     const lockHolder = await startLockHolder(sessionId, env);
     await killProcess(lockHolder);
@@ -472,7 +472,7 @@ describe("actual context hook entrypoints", () => {
     const env = hookEnvironment("claude", { STATE_DIR: stateDir });
     const sessionId = "entrypoint-outcome";
     const failed = await runHook(
-      join(root, ".claude/hooks/context-post-tool-use-failure.mjs"),
+      join(root, ".claude/hooks/context-post-tool-use-failure.mts"),
       {
         hook_event_name: "PostToolUseFailure",
         session_id: sessionId,
@@ -484,7 +484,7 @@ describe("actual context hook entrypoints", () => {
     expect(failed).toMatchObject({ code: 0, stderr: "", stdout: "" });
 
     const masked = await runHook(
-      join(root, ".claude/hooks/context-post-tool-use.mjs"),
+      join(root, ".claude/hooks/context-post-tool-use.mts"),
       {
         hook_event_name: "PostToolUse",
         session_id: sessionId,
@@ -496,7 +496,7 @@ describe("actual context hook entrypoints", () => {
     expect(masked).toMatchObject({ code: 0, stderr: "", stdout: "" });
 
     const contradicted = await runHook(
-      join(root, ".claude/hooks/context-stop.mjs"),
+      join(root, ".claude/hooks/context-stop.mts"),
       {
         hook_event_name: "Stop",
         last_assistant_message: "Tests passed.",
@@ -511,7 +511,7 @@ describe("actual context hook entrypoints", () => {
     });
 
     const honest = await runHook(
-      join(root, ".claude/hooks/context-stop.mjs"),
+      join(root, ".claude/hooks/context-stop.mts"),
       {
         hook_event_name: "Stop",
         last_assistant_message: "Tests passed previously, but the current tests failed.",
@@ -542,7 +542,7 @@ describe("comment-free source write-time enforcement", () => {
   async function runEdit(toolName: string, toolInput: Record<string, unknown>) {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-comment-hook-state-"));
     return runHook(
-      join(root, ".claude/hooks/context-pre-tool-use.mjs"),
+      join(root, ".claude/hooks/context-pre-tool-use.mts"),
       {
         hook_event_name: "PreToolUse",
         session_id: `comment-hook-${Math.random().toString(36).slice(2)}`,
@@ -714,7 +714,7 @@ describe("comment-free source write-time enforcement", () => {
     const stateDir = await mkdtemp(join(tmpdir(), "supa-comment-hook-lazy-load-"));
     const startedAt = Date.now();
     const result = await runHook(
-      join(root, ".claude/hooks/context-pre-tool-use.mjs"),
+      join(root, ".claude/hooks/context-pre-tool-use.mts"),
       {
         hook_event_name: "PreToolUse",
         session_id: `comment-hook-lazy-${Math.random().toString(36).slice(2)}`,
@@ -862,7 +862,7 @@ async function startLockHolder(
   sessionId: string,
   env: NodeJS.ProcessEnv
 ): Promise<ChildProcessWithoutNullStreams> {
-  const stateModule = pathToFileURL(join(root, "scripts/agent-hooks/state.mjs")).href;
+  const stateModule = pathToFileURL(join(root, "scripts/agent-hooks/state.mts")).href;
   const source = [
     `import { withSessionState } from ${JSON.stringify(stateModule)};`,
     `withSessionState({ session_id: ${JSON.stringify(sessionId)} }, (state) => {`,

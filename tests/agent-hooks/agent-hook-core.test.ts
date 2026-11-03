@@ -12,16 +12,16 @@ import { mkdir, mkdtemp, readFile, stat, utimes, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateBashPolicy } from "../../.claude/hooks/guards/bash-policy-checks.mjs";
+import { evaluateBashPolicy } from "../../.claude/hooks/guards/bash-policy-checks.mts";
 import {
   classifyCommandDomains,
   classifyCommandOutcomeDomains,
-} from "../../scripts/agent-hooks/command-evidence.mjs";
-import { shapeHookResult } from "../../scripts/agent-hooks/hook-output.mjs";
-import { claimedVerificationDomains } from "../../scripts/agent-hooks/response-claims.mjs";
-import { handleAgentHookEvent } from "../../scripts/agent-hooks/runner.mjs";
-import { handleSessionLifecycleEvent } from "../../scripts/agent-hooks/session-lifecycle.mjs";
-import { parseShellCommand } from "../../scripts/agent-hooks/shell-command.mjs";
+} from "../../scripts/agent-hooks/command-evidence.mts";
+import { shapeHookResult } from "../../scripts/agent-hooks/hook-output.mts";
+import { claimedVerificationDomains } from "../../scripts/agent-hooks/response-claims.mts";
+import { handleAgentHookEvent } from "../../scripts/agent-hooks/runner.mts";
+import { handleSessionLifecycleEvent } from "../../scripts/agent-hooks/session-lifecycle.mts";
+import { parseShellCommand } from "../../scripts/agent-hooks/shell-command.mts";
 import {
   inspectSessionState,
   normalizeState,
@@ -29,8 +29,8 @@ import {
   refreshSessionState,
   sessionStatePath,
   withSessionState,
-} from "../../scripts/agent-hooks/state.mjs";
-import { isCanonicalAgentSurfaceSource } from "../../scripts/skills/agent-surface-manifest.mjs";
+} from "../../scripts/agent-hooks/state.mts";
+import { isCanonicalAgentSurfaceSource } from "../../scripts/skills/agent-surface-manifest.mts";
 
 const repositoryRoot = process.cwd();
 const originalStateDir = process.env.STATE_DIR;

@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { bundleDocsFiles } from "../../scripts/skills/bundle-docs.mjs";
+import { bundleDocsFiles } from "../../scripts/skills/bundle-docs.mts";
 
 const run = promisify(execFile);
 const npmExec = (args: string[]): { file: string; args: string[] } => {

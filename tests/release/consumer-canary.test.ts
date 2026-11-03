@@ -14,7 +14,7 @@ import {
   parseCanaryArgs,
   pnpmInstallArgs,
   pnpmOverrideValue,
-} from "../../scripts/release/consumer-canary.mjs";
+} from "../../scripts/release/consumer-canary.mts";
 
 const tempRoots: string[] = [];
 

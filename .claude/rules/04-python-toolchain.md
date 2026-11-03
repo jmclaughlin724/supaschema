@@ -5,7 +5,7 @@ paths:
   - "pyproject.toml"
   - "uv.lock"
   - ".python-version"
-  - "cclsp.json"
+  - "lsp-soleaux.json"
   - ".github/workflows/python.yml"
   - "scripts/guards/fastmcp/**"
 ---
@@ -14,7 +14,7 @@ paths:
 
 ## Contract
 
-This rule owns the Python developer toolchain for `services/agent-mcp`: uv workspace layout, ruff formatting and linting, mypy strict typing, pytest, pip-audit, and pylsp/cclsp integration.
+This rule owns the Python developer toolchain for `services/agent-mcp`: uv workspace layout, ruff formatting and linting, mypy strict typing, pytest, pip-audit, and pylsp/lsp-soleaux integration.
 
 The Python side of this repo is a single uv workspace member: `services/agent-mcp` (`supaschema-agent-mcp`), the read-only local supaschema FastMCP side service. There is no FastAPI, no `services/api`, no `services/workers`, and no web HTTP API here. The server is FastMCP (`fastmcp` plus `pydantic`). This rule owns only the Python developer toolchain: format, lint, types, tests, supply chain, and the pylsp language server. The `py:*` commands are npm scripts that shell out to `uv`.
 
@@ -28,12 +28,12 @@ The Python side of this repo is a single uv workspace member: `services/agent-mc
 
 - Use `$python` for Python app and library work: server/CLI entry points, `pyproject.toml`/uv/dependency groups, tests, packaging, supply-chain provenance, async/concurrency, logging, debugging, profiling, and typing boundaries. This rule's repo-owned commands and gates stay authoritative over generic skill defaults.
 
-## Language server (cclsp + pylsp)
+## Language server (lsp-soleaux + pylsp)
 
-- Code navigation and refactors for agents go through the cclsp MCP server. Tracked root `cclsp.json` maps `.py`/`.pyi` to `uv run pylsp` so it reads the locked workspace `.venv` and root config. The file is source-repository tooling and is never published or scaffolded.
-- Root `cclsp.json` passes plugin configuration directly as `initializationOptions.pylsp`, not `initializationOptions.settings.pylsp`: cclsp forwards the object unchanged and pylsp reads the top-level `pylsp` key. Its `restartInterval: 5` applies only to pylsp and restarts the same `uv run pylsp` command every five minutes.
+- Code navigation and refactors for agents go through the lsp-soleaux MCP server. Tracked root `lsp-soleaux.json` maps `.py`/`.pyi` to `uv run pylsp` so it reads the locked workspace `.venv` and root config. The file is source-repository tooling and is never published or scaffolded.
+- Root `lsp-soleaux.json` passes plugin configuration directly as `initializationOptions.pylsp`, not `initializationOptions.settings.pylsp`: lsp-soleaux forwards the object unchanged and pylsp reads the top-level `pylsp` key. Its `restartInterval: 5` applies only to pylsp and restarts the same `uv run pylsp` command every five minutes.
 - The Python LSP is python-lsp-server (pylsp), pinned in the root dev group, with the editor plugins `python-lsp-ruff`, `pylsp-rope`, and `pyls-memestra`. All three live in `[dependency-groups] dev`. Install or refresh with `uv sync`, never a global pip: the plugins must share the workspace `.venv` or `uv run pylsp` cannot see them.
-- Root `cclsp.json` and local `.vscode/settings.json` configure `python-lsp-ruff` as the sole formatter/linter plugin: `formatEnabled: true` runs Ruff formatting, `format: ["I"]` applies Ruff import-sorting fixes, and `signature.formatter: "ruff"` uses Ruff for signature rendering. Rope provides refactors, memestra flags deprecations, and pylsp's redundant built-ins (pycodestyle, pyflakes, mccabe, autopep8, yapf, flake8, pylint, pydocstyle) are disabled.
+- Root `lsp-soleaux.json` and local `.vscode/settings.json` configure `python-lsp-ruff` as the sole formatter/linter plugin: `formatEnabled: true` runs Ruff formatting, `format: ["I"]` applies Ruff import-sorting fixes, and `signature.formatter: "ruff"` uses Ruff for signature rendering. Rope provides refactors, memestra flags deprecations, and pylsp's redundant built-ins (pycodestyle, pyflakes, mccabe, autopep8, yapf, flake8, pylint, pydocstyle) are disabled.
 
 ## One owner per concern
 
@@ -62,8 +62,8 @@ Apply Python fixes locally with `npm run py:fix`, which runs `ruff check --fix` 
 
 - `.github/workflows/python.yml` is tracked with `services/agent-mcp`: the Python CI lane runs on every checkout and requires the tracked FastMCP service files. The focused local lane remains the `py:*` command set above.
 - The `--package supaschema-agent-mcp` selector is mandatory. The workspace root has no runtime deps (`dependencies = []`, `package = false`) and does not depend on the member, so a bare `uv run mypy` or `uv run pytest` resolves in the root env that lacks `fastmcp`/`mcp`/`pydantic` and fails with `import-not-found`.
-- `npm run guard:lsp-coverage` (`scripts/guards/toolchain/check-lsp-coverage.mjs`, part of `npm run guard`) hard-blocks if any tracked code extension, including `.py`/`.pyi`, is not mapped in tracked root `cclsp.json`.
-- `npm run guard:fastmcp` (`scripts/guards/fastmcp/check-fastmcp-agent.mjs`) keeps the FastMCP server surface aligned.
+- `npm run guard:lsp-coverage` (`scripts/guards/toolchain/check-lsp-coverage.mts`, part of `npm run guard`) hard-blocks if any tracked code extension, including `.py`/`.pyi`, is not mapped in tracked root `lsp-soleaux.json`.
+- `npm run guard:fastmcp` (`scripts/guards/fastmcp/check-fastmcp-agent.mts`) keeps the FastMCP server surface aligned.
 - After changing any dev tool or runtime dependency, run `uv lock` and commit `uv.lock`. The `uv sync --locked` step fails the PR on drift.
 
 STOP if any of these occurs:
@@ -71,7 +71,7 @@ STOP if any of these occurs:
 - A Python file ships unformatted (`ruff format --check` fails), fails ruff lint, or fails strict `mypy`.
 - `uv.lock` drifts from `pyproject.toml` (`uv sync --locked` would fail).
 - Ruff's line length diverges from `100`.
-- The `.py`/`.pyi` cclsp mapping, the direct `initializationOptions.pylsp` envelope, the five-minute restart, or a required `python-lsp-ruff`, `pylsp-rope`, or `pyls-memestra` plugin is removed.
+- The `.py`/`.pyi` lsp-soleaux mapping, the direct `initializationOptions.pylsp` envelope, the five-minute restart, or a required `python-lsp-ruff`, `pylsp-rope`, or `pyls-memestra` plugin is removed.
 - Black or standalone isort formatting returns, or a competing Python formatter, linter, or type checker is added.
 - A `python.yml` step or any script runs a bare `uv run <tool>` that needs the member environment (`mypy`/`pytest`) without `--package supaschema-agent-mcp`, diverging from the canonical `py:*` invocations.
 - FastAPI, `services/api`, pnpm, or any HTTP-API-only construct is reintroduced into this FastMCP-only Python surface.

@@ -4,8 +4,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-post-tool-use.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-post-tool-use.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-post-tool-use.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-post-tool-use.mts\"",
             "statusMessage": "Recording supaschema hook evidence",
             "timeout": 10,
             "type": "command"
@@ -16,8 +16,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/supaschema-source-hook.mjs\" hook schema-write",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/supaschema-source-hook.mjs\" hook schema-write",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/supaschema-source-hook.mts\" hook schema-write",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/supaschema-source-hook.mts\" hook schema-write",
             "statusMessage": "Running supaschema auto-diff on schema change",
             "timeout": 130,
             "type": "command"
@@ -30,8 +30,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-pre-tool-use.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-pre-tool-use.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-pre-tool-use.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-pre-tool-use.mts\"",
             "statusMessage": "Checking required supaschema context",
             "timeout": 10,
             "type": "command"
@@ -42,8 +42,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/supaschema-source-hook.mjs\" hook generated-artifact-edit --runtime codex",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/supaschema-source-hook.mjs\" hook generated-artifact-edit --runtime codex",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/supaschema-source-hook.mts\" hook generated-artifact-edit --runtime codex",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/supaschema-source-hook.mts\" hook generated-artifact-edit --runtime codex",
             "statusMessage": "Checking supaschema generated-artifact policy",
             "timeout": 10,
             "type": "command"
@@ -56,8 +56,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-session-start.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-session-start.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-session-start.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-session-start.mts\"",
             "statusMessage": "Refreshing agent hook state",
             "timeout": 10,
             "type": "command"
@@ -70,8 +70,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-session-end.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-session-end.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-session-end.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-session-end.mts\"",
             "statusMessage": "Clearing supaschema agent hook state",
             "timeout": 2,
             "type": "command"
@@ -83,8 +83,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-subagent-start.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-subagent-start.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-subagent-start.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-subagent-start.mts\"",
             "statusMessage": "Loading supaschema subagent context",
             "timeout": 10,
             "type": "command"
@@ -96,8 +96,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-subagent-stop.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-subagent-stop.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-subagent-stop.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-subagent-stop.mts\"",
             "statusMessage": "Checking supaschema subagent closeout",
             "timeout": 10,
             "type": "command"
@@ -109,8 +109,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-stop.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-stop.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-stop.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-stop.mts\"",
             "statusMessage": "Checking supaschema final-response evidence",
             "timeout": 10,
             "type": "command"
@@ -122,8 +122,8 @@
       {
         "hooks": [
           {
-            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-user-prompt-submit.mjs\"",
-            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-user-prompt-submit.mjs\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/context-user-prompt-submit.mts\"",
+            "commandWindows": "for /f \"delims=\" %S in ('git rev-parse --show-toplevel') do @node \"%S/.codex/hooks/context-user-prompt-submit.mts\"",
             "statusMessage": "Checking prompt-scoped supaschema context",
             "timeout": 10,
             "type": "command"

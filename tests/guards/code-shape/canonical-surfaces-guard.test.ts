@@ -1,7 +1,7 @@
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check } from "../../../scripts/guards/code-shape/check-canonical-surfaces.mjs";
+import { check } from "../../../scripts/guards/code-shape/check-canonical-surfaces.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 const packageJson = (scripts: Record<string, string> = {}) =>
@@ -135,7 +135,7 @@ describe("canonical surfaces guard", () => {
     timeout: 20_000,
   }, async () => {
     const root = tempGuardRepo({
-      "scripts/stripe/create-catalog.mjs":
+      "scripts/stripe/create-catalog.mts":
         "export const endpoint = 'https://api.stripe.com/v1/products';\n",
     });
     await expect(check(root)).resolves.toBeUndefined();

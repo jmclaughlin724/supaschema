@@ -26,7 +26,7 @@ The signing/verification logic and the full self-serve loop are implemented here
 - `src/subscription-renewal.ts` - atomic per-Checkout-session renewal state and monotonic paid-through enforcement.
 - `src/index.ts` - the Worker router (`handleLicenseWorker`) dispatching `/checkout`, `/contracts`, `/webhook`, `/license`.
 - `src/worker.ts` - the Cloudflare entry point plus the renewal and OAuth-state Durable Objects.
-- `scripts/stripe/create-catalog.mjs` - one-shot product/price catalog creation owner; it emits the `STRIPE_PRICE_MAP` JSON consumed by the Worker.
+- `scripts/stripe/create-catalog.mts` - one-shot product/price catalog creation owner; it emits the `STRIPE_PRICE_MAP` JSON consumed by the Worker.
 
 ## Deployment Handoff
 
@@ -41,7 +41,7 @@ The signing/verification logic and the full self-serve loop are implemented here
 3. Keep `services/license-worker/wrangler.toml` as the canonical Worker config. It declares `LICENSE_KV` and `CONTRACT_KV` without ids, provisions the SQLite-backed `SUBSCRIPTION_RENEWALS` and `OAUTH_STATES` Durable Object namespaces, and publishes the Worker on the `license.supaschema.com` custom domain used by the success page.
 4. Create the Stripe catalog with the approved prices:
    ```bash
-   STRIPE_CATALOG_APPROVED=1 node scripts/stripe/create-catalog.mjs
+   STRIPE_CATALOG_APPROVED=1 node scripts/stripe/create-catalog.mts
    ```
 5. Register a GitHub App with callback URL `https://<worker-origin>/auth/github/callback`, grant repository Metadata read access, and install it on every repository eligible for licensing. Use the App's client id and secret for the existing OAuth-named Worker bindings; the authorization request deliberately sends no classic OAuth scopes. Then set the Worker secrets and deployment-specific plan map in Cloudflare:
    ```bash
