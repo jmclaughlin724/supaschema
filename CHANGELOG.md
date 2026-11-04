@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 (2026-11-04)
+
+### Minor Changes
+
+- ccd237f: Add `supaschema rebaseline` and the typed `rebaselineMigrations` API for dry-run-first whole-history replacement. The workflow inventories discarded migration-only operations, optionally retains exact reviewed operational migrations, verifies a new declarative baseline before writing, restores the previous files on replacement failure, refreshes generated contracts, and stages migration deletions with the closure without mutating target databases.
+
+### Patch Changes
+
+- 9f0994f: Update runtime dependencies to their latest stable releases. With `pgsql-deparser` 18.4, `normalize: "deparse"` renders a sequence increment change as `SET INCREMENT 5` instead of `SET INCREMENT BY 5`; both forms parse to the same PostgreSQL tree.
+
 ## 0.5.7 (2026-08-08)
 
 ### Patch Changes

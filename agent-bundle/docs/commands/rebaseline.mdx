@@ -50,15 +50,15 @@ An identical second run reports `alreadyConverged` and makes no changes.
 
 ## Options
 
-| Option | Meaning |
-| --- | --- |
-| `--migrations-dir <dir>` | Override `config.migrationsDir`. |
-| `--database-url <url>` | Disposable PostgreSQL URL whose role can create and drop verification databases. |
-| `--ensure-environment` / `--no-ensure-environment` | Enable or disable Supabase-managed surface stubs during verification. |
-| `--ensure-roles` | Create missing referenced NOLOGIN roles on the verification server. |
-| `--retain <file...>` | Re-version exact reviewed operational migration files after the baseline because the declarative tree cannot own them. |
-| `--write` | Replace history after verification. Without this flag the command is a dry run. |
-| `--json` | Emit the complete structured result, including discarded operations and staged paths. |
+| Option                                             | Meaning                                                                                                                |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `--migrations-dir <dir>`                           | Override `config.migrationsDir`.                                                                                       |
+| `--database-url <url>`                             | Disposable PostgreSQL URL whose role can create and drop verification databases.                                       |
+| `--ensure-environment` / `--no-ensure-environment` | Enable or disable Supabase-managed surface stubs during verification.                                                  |
+| `--ensure-roles`                                   | Create missing referenced NOLOGIN roles on the verification server.                                                    |
+| `--retain <file...>`                               | Re-version exact reviewed operational migration files after the baseline because the declarative tree cannot own them. |
+| `--write`                                          | Replace history after verification. Without this flag the command is a dry run.                                        |
+| `--json`                                           | Emit the complete structured result, including discarded operations and staged paths.                                  |
 
 ## Result
 
