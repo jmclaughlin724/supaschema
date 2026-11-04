@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { lintDocsStandard } from "../../scripts/docs-lint/check-standard.mjs";
+import { lintDocsStandard } from "../../scripts/docs-lint/check-standard.mts";
 
 const docsLintCli = fileURLToPath(
-  new URL("../../scripts/docs-lint/check-standard.mjs", import.meta.url)
+  new URL("../../scripts/docs-lint/check-standard.mts", import.meta.url)
 );
 const roots: string[] = [];
 
@@ -71,7 +71,6 @@ function localRunnerFixtureFiles(overrides: Record<string, string> = {}) {
     ".claude/skills/supaschema/SKILL.md": "Use the package manager local runner.\n",
     "AGENTS.md": "Use the package manager local runner.\n",
     "bin/scaffold.mjs": "export {};\n",
-    "CLAUDE.md": "Use the package manager local runner.\n",
     "README.md": "Use the package manager local runner.\n",
     ...Object.fromEntries(
       localRunnerDocsPages.map((route) => [`docs/${route}.mdx`, page("## Start")])

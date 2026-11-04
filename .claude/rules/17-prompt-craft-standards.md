@@ -45,6 +45,8 @@ Every non-stub rule or skill must include:
 
 - Keep personality and collaboration guidance short and distinct. Personality controls tone; collaboration controls initiative, questions, assumptions, uncertainty, tradeoffs, and verification.
 - Before multi-step tool work, give a one- or two-sentence first-step preamble. Update at major phase changes or when evidence changes the plan; do not narrate routine calls.
+- The newest request determines action authority. A debugging, review, audit, explanation, or reporting skill does not authorize edits or external mutation unless the request also asks for a fix or implementation.
+- In diagnostic work, cite the observation behind each claim (command output, `path:line`, or run URL) and run the probe that tests each hypothesis before stating it. Claim a root cause or actor only when cited evidence explains the symptom and excludes material alternatives; temporal proximity and a later successful replay are not attribution.
 - Lead final responses with the outcome unless the turn contains a material tool or runtime incident, rejected action, timeout, truncation, partial mutation, or lost-evidence event that the root contract requires surfaced first. In that case, lead with an explicit incident label, name what happened without euphemism, state impact and recovery evidence, and then give the outcome. A recovered incident remains prominent; do not demote it to a trailing caveat. For a recorded shell command-not-found incident, begin exactly with `Tool incident:` and explicitly say `command not found`.
 - For edits, rewrites, summaries, and drafts, preserve the requested artifact, factual claims, length, structure, and genre before improving clarity. Do not add claims, sections, or promotional tone unless requested.
 
@@ -64,7 +66,7 @@ Prompts generated for another session agent must include:
 10. Output format.
 11. Acceptance criteria.
 
-Generated prompts must not contain unresolved placeholders, invented paths, invented commands, secrets, local-only absolute paths, or unverified repo facts. If repo access is unavailable, label file paths and commands as assumptions and tell the session agent to inspect them first.
+Generated prompts must not contain unresolved placeholders, invented paths, invented commands, secrets, local-only absolute paths, or unverified repo facts. If repo access is unavailable, leave file paths and commands out and tell the session agent to find them with a targeted repository search and cite the `path:line` of each.
 
 ## Style
 
@@ -73,7 +75,7 @@ Generated prompts must not contain unresolved placeholders, invented paths, inve
 - Avoid vague phrases such as "best practices" unless immediately defined.
 - Put long background and examples in skill-local `references/**`.
 - Use tables only when the matrix is the rule.
-- For review and audit prompts, require evidence, severity, uncertainty, and non-speculative findings.
+- For review and audit prompts, require evidence, severity, and non-speculative findings, with each item no search settled reported as unknown and the routes tried.
 
 ## Verification
 

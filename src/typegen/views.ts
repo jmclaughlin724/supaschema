@@ -64,7 +64,7 @@ export async function collectUnresolvedViewRelations(
     }
     unresolved.add(`${schemaName}.${relname}`);
   });
-  return [...unresolved].sort();
+  return [...unresolved].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 function walkRangeVars(node: unknown, visit: (schemaName: string, relname: string) => void): void {

@@ -4,7 +4,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-const proxy = resolve("scripts/cclsp-language-id-proxy.mjs");
+const proxy = resolve("scripts/cclsp-language-id-proxy.mts");
 const echoChild = [process.execPath, "-e", "process.stdin.pipe(process.stdout)"];
 const initializeMessageSchema = z.object({
   params: z.object({

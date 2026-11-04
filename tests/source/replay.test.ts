@@ -49,37 +49,6 @@ function table(model: SchemaModel, key: string): SchemaObject | undefined {
   return model.objects.find((object) => object.key === key);
 }
 
-async function expectPolicyReplayMatchesDeclaration(
-  initialPolicy: string,
-  alteration: string,
-  declaredPolicy: string
-): Promise<void> {
-  const history = await extractMigrations([
-    [
-      "20240101000000_alter_policy.sql",
-      `CREATE SCHEMA app;
-CREATE TABLE app.accounts (id integer, active boolean);
-${initialPolicy}
-${alteration}`,
-    ],
-  ]);
-  const declared = await extractDirectory([
-    [
-      "app.sql",
-      `CREATE SCHEMA app;
-CREATE TABLE app.accounts (id integer, active boolean);
-${declaredPolicy}`,
-    ],
-  ]);
-
-  expect(errors(history.diagnostics)).toEqual([]);
-  expect(errors(declared.diagnostics)).toEqual([]);
-  expect(history.fingerprint).toBe(declared.fingerprint);
-  expect(table(history, "policy:app.accounts_update:accounts")?.hash).toBe(
-    table(declared, "policy:app.accounts_update:accounts")?.hash
-  );
-}
-
 function columns(object: SchemaObject | undefined): TableColumn[] {
   const value = object?.metadata.columns;
   return Array.isArray(value) ? value.filter(isTableColumn) : [];
@@ -147,7 +116,9 @@ describe("migrations source replay", () => {
       await readFile(join(fixture, "provenance.json"), "utf8")
     );
     const expectedHashes = fixtureFileHashes(provenance);
-    const expectedSqlFiles = Object.keys(expectedHashes).sort();
+    const expectedSqlFiles = Object.keys(expectedHashes).sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    );
     const actualSqlFiles = (await readdir(fixture)).filter((file) => file.endsWith(".sql")).sort();
     expect(actualSqlFiles).toEqual(expectedSqlFiles);
     for (const file of actualSqlFiles) {
@@ -159,7 +130,9 @@ describe("migrations source replay", () => {
 
     const config = resolveConfig({ migrationsDir: fixture });
     const first = await extractSourceModel(`migrations:${fixture}`, { config });
-    const second = await extractSourceModel(`migrations:${fixture}`, { config });
+    const second = await extractSourceModel(`migrations:${fixture}`, {
+      config,
+    });
 
     expect(first.diagnostics).toEqual([]);
     expect(second.diagnostics).toEqual([]);
@@ -257,6 +230,21 @@ DROP TABLE app.transient_events;`,
 
     expect(errors(model.diagnostics)).toEqual([]);
     expect(model.objects.map((object) => object.key)).not.toContain("table:app.transient_events");
+  });
+
+  it("replays CREATE and DROP FOREIGN DATA WRAPPER", async () => {
+    const model = await extractMigrations([
+      [
+        "20240101000000_create_drop_fdw.sql",
+        `CREATE FOREIGN DATA WRAPPER airtable;
+DROP FOREIGN DATA WRAPPER airtable;`,
+      ],
+    ]);
+
+    expect(errors(model.diagnostics)).toEqual([]);
+    expect(model.objects.map((object) => object.key)).not.toContain(
+      "foreign-data-wrapper:airtable"
+    );
   });
 
   it("replays DROP INDEX before an index is recreated", async () => {
@@ -550,6 +538,39 @@ ALTER TYPE app.status ADD VALUE IF NOT EXISTS 'queued' BEFORE 'active';`,
     expect(enumValues(model, "enum:app.status")).toEqual(["draft", "queued", "active"]);
   });
 
+  it("preserves quoted identifiers while replaying DO-block DDL", async () => {
+    const ddl = 'CREATE TABLE app."items;""archive" ("create;value" text);';
+    const history = await extractMigrations([
+      [
+        "20240101000000_quoted_identifier.sql",
+        `CREATE SCHEMA app;
+DO $schema_replay$ BEGIN ${ddl} END $schema_replay$;`,
+      ],
+    ]);
+    const declared = await extractDirectory([["app.sql", `CREATE SCHEMA app; ${ddl}`]]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+  });
+
+  it("preserves bare-dollar-quoted values while replaying DO-block DDL", async () => {
+    const ddl = "CREATE TYPE app.status AS ENUM ($$draft;queued$$, 'active');";
+    const history = await extractMigrations([
+      [
+        "20240101000000_dollar_quote.sql",
+        `CREATE SCHEMA app;
+DO $schema_replay$ BEGIN ${ddl} END $schema_replay$;`,
+      ],
+    ]);
+    const declared = await extractDirectory([["app.sql", `CREATE SCHEMA app; ${ddl}`]]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+    expect(enumValues(history, "enum:app.status")).toEqual(["draft;queued", "active"]);
+  });
+
   it("preserves one DO-block idempotency guard across multiple guarded DDL statements", async () => {
     const model = await extractMigrations([
       [
@@ -727,7 +748,11 @@ ALTER TABLE app.accounts RENAME TO customers;`,
     expect(targets).toHaveLength(2);
     expect(targets).toContainEqual(expect.objectContaining({ kind: "table", name: "customers" }));
     expect(targets).toContainEqual(
-      expect.objectContaining({ kind: "column", name: "email", table: "customers" })
+      expect.objectContaining({
+        kind: "column",
+        name: "email",
+        table: "customers",
+      })
     );
     for (const comment of model.objects.filter((object) => object.ref.kind === "comment")) {
       expect(comment.sql).toContain("customers");
@@ -797,7 +822,10 @@ COMMENT ON SCHEMA extra IS 'docs';`,
     const comments = model.objects.filter((object) => object.ref.kind === "comment");
     expect(comments).toHaveLength(1);
     expect(comments[0]?.metadata.description).toBe("docs");
-    expect(comments[0]?.metadata.commentTarget).toMatchObject({ kind: "schema", name: "extra" });
+    expect(comments[0]?.metadata.commentTarget).toMatchObject({
+      kind: "schema",
+      name: "extra",
+    });
   });
 
   it("hard-fails unsupported rename types without returning partial objects", async () => {
@@ -840,7 +868,10 @@ CREATE TABLE app.accounts (id integer);
 ALTER TABLE app.accounts DROP COLUMN IF EXISTS missing_column;`,
         ],
       ],
-      resolveConfig({ managedSchemas: ["auth"], schemas: { exclude: ["auth"], include: [] } })
+      resolveConfig({
+        managedSchemas: ["auth"],
+        schemas: { exclude: ["auth"], include: [] },
+      })
     );
 
     expect(errors(model.diagnostics)).toEqual([]);
@@ -857,7 +888,10 @@ CREATE SCHEMA app;
 CREATE TABLE app.accounts (id integer);`,
         ],
       ],
-      resolveConfig({ managedSchemas: ["vault"], schemas: { exclude: ["vault"], include: [] } })
+      resolveConfig({
+        managedSchemas: ["vault"],
+        schemas: { exclude: ["vault"], include: [] },
+      })
     );
 
     expect(errors(model.diagnostics)).toEqual([]);
@@ -1253,7 +1287,9 @@ CREATE INDEX accounts_lookup_idx ON app.accounts (id);`,
       ],
     ]);
     const config = resolveConfig();
-    const replayed = await extractSourceModel(`migrations:${migrations}`, { config });
+    const replayed = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+    });
     const declared = await extractSourceModel(`dir:${tree}`, { config });
 
     expect(errors(replayed.diagnostics)).toEqual([]);
@@ -1293,8 +1329,14 @@ CREATE TABLE app.accounts (id bigint);`
       migrationsDir: migrations,
       schemaPaths: [schemas],
     });
-    const replayed = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
-    const declared = await extractSourceModel(`dir:${schemas}`, { config, cwd: root });
+    const replayed = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
+    const declared = await extractSourceModel(`dir:${schemas}`, {
+      config,
+      cwd: root,
+    });
 
     expect(errors(replayed.diagnostics)).toEqual([]);
     expect(errors(declared.diagnostics)).toEqual([]);
@@ -1316,11 +1358,17 @@ CREATE TABLE app.accounts (id bigint);`
       schemaPaths: [schemas],
       sources: { from: "empty:" },
     });
-    const before = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const before = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     const generatedPath = join(migrations, "20240102000000_generated.sql");
     const generatedSql = "ALTER TABLE app.accounts ADD COLUMN name text;\n";
     await writeFile(generatedPath, generatedSql);
-    const generated = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const generated = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     await writeFile(
       generatedPath,
       `-- supaschema: lineage format=${MODEL_FORMAT_VERSION} from=${before.fingerprint} to=${generated.fingerprint}
@@ -1398,7 +1446,10 @@ ${generatedSql}`
       schemaPaths: [schemas],
       sources: { from: "empty:" },
     });
-    const before = await extractSourceModel(`migrations:${migrations}`, { config, cwd: root });
+    const before = await extractSourceModel(`migrations:${migrations}`, {
+      config,
+      cwd: root,
+    });
     const generatedPath = join(migrations, "20240102000000_generated.sql");
     const generatedSql = "ALTER TABLE app.accounts ADD COLUMN name text;\n";
     await writeFile(generatedPath, generatedSql);
@@ -1652,51 +1703,71 @@ CREATE TABLE app.accounts (id integer);`,
     expect(model.objects.map((object) => object.key)).toEqual(["schema:app", "table:app.accounts"]);
   });
 
-  it("replays ALTER POLICY TO while preserving both predicates", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  it.each([
+    [
+      "TO while preserving both predicates",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO anon
   USING (active)
   WITH CHECK (id > 0);`,
       "ALTER POLICY accounts_update ON app.accounts TO authenticated;",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (active)
-  WITH CHECK (id > 0);`
-    );
-  });
-
-  it("replays ALTER POLICY USING while preserving roles and WITH CHECK", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (id > 0);`,
+    ],
+    [
+      "USING while preserving roles and WITH CHECK",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (true)
   WITH CHECK (active);`,
       "ALTER POLICY accounts_update ON app.accounts USING (id IS NOT NULL);",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
-  WITH CHECK (active);`
-    );
-  });
-
-  it("replays ALTER POLICY WITH CHECK while preserving roles and USING", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (active);`,
+    ],
+    [
+      "WITH CHECK while preserving roles and USING",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
   WITH CHECK (true);`,
       "ALTER POLICY accounts_update ON app.accounts WITH CHECK (active AND id > 0);",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (id IS NOT NULL)
-  WITH CHECK (active AND id > 0);`
-    );
-  });
-
-  it("replays ALTER POLICY TO PUBLIC while preserving both predicates", async () => {
-    await expectPolicyReplayMatchesDeclaration(
+  WITH CHECK (active AND id > 0);`,
+    ],
+    [
+      "TO PUBLIC while preserving both predicates",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO authenticated
   USING (active)
   WITH CHECK (id > 0);`,
       "ALTER POLICY accounts_update ON app.accounts TO PUBLIC;",
       `CREATE POLICY accounts_update ON app.accounts FOR UPDATE TO PUBLIC
   USING (active)
-  WITH CHECK (id > 0);`
+  WITH CHECK (id > 0);`,
+    ],
+  ])("replays ALTER POLICY %s", async (_name, initialPolicy, alteration, declaredPolicy) => {
+    const history = await extractMigrations([
+      [
+        "20240101000000_alter_policy.sql",
+        `CREATE SCHEMA app;
+CREATE TABLE app.accounts (id integer, active boolean);
+${initialPolicy}
+${alteration}`,
+      ],
+    ]);
+    const declared = await extractDirectory([
+      [
+        "app.sql",
+        `CREATE SCHEMA app;
+CREATE TABLE app.accounts (id integer, active boolean);
+${declaredPolicy}`,
+      ],
+    ]);
+
+    expect(errors(history.diagnostics)).toEqual([]);
+    expect(errors(declared.diagnostics)).toEqual([]);
+    expect(history.fingerprint).toBe(declared.fingerprint);
+    expect(table(history, "policy:app.accounts_update:accounts")?.hash).toBe(
+      table(declared, "policy:app.accounts_update:accounts")?.hash
     );
   });
 
@@ -1853,7 +1924,9 @@ GRANT SELECT(id, token) ON app.sessions TO app_worker;`,
     const grants = model.objects.filter((object) => object.ref.kind === "grant");
     expect(grants).toHaveLength(1);
     expect(grants[0]?.metadata.privileges).toEqual(["INSERT", "SELECT"]);
-    expect(grants[0]?.metadata.columnPrivileges).toEqual({ SELECT: ["id", "token"] });
+    expect(grants[0]?.metadata.columnPrivileges).toEqual({
+      SELECT: ["id", "token"],
+    });
     expect(grants[0]?.sql).toBe(
       'GRANT INSERT, SELECT ("id", "token") ON TABLE "app"."sessions" TO "app_worker"'
     );
@@ -1920,7 +1993,9 @@ CREATE TABLE app.accounts (id integer);`,
   it("hard-fails a missing migrations directory with a named ordering diagnostic", async () => {
     const root = await mkdtemp(join(tmpdir(), "supa-replay-missing-"));
     const missing = join(root, "missing");
-    const model = await extractSourceModel(`migrations:${missing}`, { config: resolveConfig() });
+    const model = await extractSourceModel(`migrations:${missing}`, {
+      config: resolveConfig(),
+    });
 
     expect(model.objects).toEqual([]);
     expect(errors(model.diagnostics).map((item) => item.code)).toEqual(["SUPA_REPLAY_ORDER_GAP"]);

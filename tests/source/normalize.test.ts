@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { checkMigrationSql } from "../../src/check/migration.js";
 import { suppressDefaultAclImpliedGrants } from "../../src/grants/default-acl.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
 import { renderMigration } from "../../src/render/migration.js";
@@ -689,7 +690,7 @@ describe("standalone column identity amendments", () => {
     expect(plan.operations.find((operation) => operation.key === "table:app.t")?.kind).toBe(
       "alter"
     );
-    expect(sql).toContain("SET INCREMENT BY 5;");
+    expect(sql).toContain("SET INCREMENT 5;");
   });
 });
 
@@ -984,6 +985,19 @@ describe("sequence OWNED BY amendments", () => {
     const alteredSeq = altered.objects.find((object) => object.ref.kind === "sequence");
     const inlineSeq = inline.objects.find((object) => object.ref.kind === "sequence");
     expect(alteredSeq?.hash).toBe(inlineSeq?.hash);
+  });
+
+  it("preserves the creation guard when an owned sequence already declares IF NOT EXISTS", async () => {
+    const from = { diagnostics: [], fingerprint: "", objects: [], source: "empty" };
+    const to = await modelFromSql(
+      "CREATE SCHEMA app;\nCREATE SEQUENCE IF NOT EXISTS app.s OWNED BY app.t.id;\nCREATE TABLE app.t (id bigint);\n"
+    );
+    const sql = renderMigration(planSchemaDiff(from, to), { includeHeader: false });
+    const diagnostics = await checkMigrationSql(sql);
+
+    expect(diagnostics.map((item) => item.code)).not.toContain("SUPA_CHECK_CREATE_SEQUENCE_GUARD");
+    expect(sql).toContain('CREATE SEQUENCE IF NOT EXISTS "app"."s"');
+    expect(sql).not.toContain('CREATE SEQUENCE "app"."s"');
   });
 
   it("renders sequence ownership after the owned table while keeping sequence defaults valid", async () => {

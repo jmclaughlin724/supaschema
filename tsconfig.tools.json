@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "checkJs": false,
+    "erasableSyntaxOnly": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
@@ -17,17 +19,20 @@
     "dist",
     "docs/.blume",
     "docs/.blume-verify",
+    "docs/blume.config.ts",
     "docs/dist",
     "docs/node_modules",
     "node_modules"
   ],
   "include": [
+    ".claude/hooks/**/*.mts",
     "benchmarks/**/*.js",
     "benchmarks/**/*.mjs",
     "bin/**/*.mjs",
     "docs/**/*.ts",
-    "scripts/**/*.js",
     "scripts/**/*.mjs",
+    "scripts/**/*.mts",
+    "scripts/**/*.ts",
     "services/**/*.ts",
     "src/**/*.ts"
   ]

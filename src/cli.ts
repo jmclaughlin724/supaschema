@@ -187,6 +187,7 @@ registerDiffCommands(program, {
   configPath: currentConfigPath,
   loadCliConfig,
   printDiagnostics,
+  resolveCliDatabaseUrl,
 });
 registerReportCommands(program, {
   cliVersion,

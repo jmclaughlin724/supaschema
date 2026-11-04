@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeSnapshotVersion,
   snapshotCommitSha,
-} from "../../scripts/release/snapshot-version.mjs";
+} from "../../scripts/release/snapshot-version.mts";
 
 describe("computeSnapshotVersion", () => {
   it("bumps the patch and appends the dev prerelease", () => {

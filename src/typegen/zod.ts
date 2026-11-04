@@ -3,10 +3,10 @@ import { createCheckConstraintTranslator } from "./check-constraints.js";
 import { quoteCodeString, quoteKey } from "./database.js";
 import type { ColumnShape, SchemaEntry, SchemaShapes } from "./model.js";
 import {
+  chaseColumnType,
   computedRelationshipFunctions,
   isNonWritableColumn,
   isOptionalInsertColumn,
-  resolveColumnType,
   sortedByName,
 } from "./model.js";
 
@@ -402,7 +402,7 @@ function zodExpression(
   hasDatabaseContract: boolean,
   databaseTypeUsage: DatabaseTypeUsage
 ): string {
-  const resolved = resolveColumnType(shapes, schema, sqlType);
+  const resolved = chaseColumnType(shapes, schema, sqlType);
   let expression: string;
   if (resolved.kind === "enum" && resolved.enumRef) {
     expression = lazyZodPath(

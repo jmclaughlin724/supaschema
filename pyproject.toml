@@ -1,16 +1,16 @@
 [project]
 name = "supaschema-workspace"
 version = "0.0.0"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = []
 
 [dependency-groups]
 dev = [
-  "pytest-asyncio==1.4.0",
+  "pytest-asyncio==1.4.1.post1",
   "ruff",
   "mypy",
-  "python-lsp-server==1.14.0",
-  "python-lsp-ruff==2.2.2",
+  "python-lsp-server==1.15.0",
+  "python-lsp-ruff==2.3.4",
   "pylsp-rope==0.1.17",
   "pyls-memestra==0.0.16",
 ]
@@ -28,7 +28,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["services/agent-mcp/tests"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 100
 src = ["services/agent-mcp"]
 
@@ -36,6 +36,6 @@ src = ["services/agent-mcp"]
 select = ["E", "F", "I", "B", "UP", "RUF", "PT"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 files = ["services/agent-mcp/supaschema_agent_mcp"]

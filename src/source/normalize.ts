@@ -51,6 +51,29 @@ export async function normalizeSourceObjects(
   return mergedDefaults;
 }
 
+const routineGrantKindPhrases = new Set(["FUNCTION", "PROCEDURE", "ROUTINE"]);
+
+export function declaredRoutineRevokes(objects: readonly SchemaObject[]): SchemaObject[] {
+  const lastStatementByTarget = new Map<string, SchemaObject>();
+  for (const object of [...objects].sort((left, right) => left.ordinal - right.ordinal)) {
+    if (
+      object.ref.kind === "grant" &&
+      routineGrantKindPhrases.has(metadataKindPhrase(object.metadata)) &&
+      typeof object.metadata.targetIdentity === "string" &&
+      typeof object.metadata.grantee === "string"
+    ) {
+      lastStatementByTarget.set(privilegeTargetKey(object), object);
+    }
+  }
+  return [...lastStatementByTarget.values()].filter(
+    (object) =>
+      object.metadata.verb === "REVOKE" &&
+      metadataPrivileges(object.metadata).some(
+        (privilege) => privilege === "ALL" || privilege === "EXECUTE"
+      )
+  );
+}
+
 function suppressDefaultEqualPrivileges(objects: SchemaObject[]): SchemaObject[] {
   const grantsByTarget = collectGrantsByTarget(objects);
   const nettedAway = defaultEqualPrivilegesToSuppress(objects, grantsByTarget);
@@ -811,12 +834,13 @@ function applyColumnIdentityAmendments(
       };
     }
     const sequenceOptionOnly = amendment.action === "set" && amendment.identity === undefined;
-    const identitySqlByColumn = sequenceOptionOnly
-      ? {
-          ...asRecord(table.metadata.columnIdentitySqlByColumn),
-          [amendment.column]: marker.sql,
-        }
-      : asRecord(table.metadata.columnIdentitySqlByColumn);
+    const identitySqlByColumn =
+      amendment.action === "add" || sequenceOptionOnly
+        ? {
+            ...asRecord(table.metadata.columnIdentitySqlByColumn),
+            [amendment.column]: marker.sql,
+          }
+        : asRecord(table.metadata.columnIdentitySqlByColumn);
     if (sequenceOptionOnly) {
       nextColumns[columnIndex] = {
         ...nextColumns[columnIndex],

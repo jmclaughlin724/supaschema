@@ -55,4 +55,4 @@ jobs:
           CANARY_REF: ${{ inputs.ref }}
           CANARY_SPEC: ${{ inputs.spec }}
         run: >-
-          node scripts/release/consumer-canary.mjs --repo "$CANARY_REPO" --ref "$CANARY_REF" --spec "$CANARY_SPEC"
+          node scripts/release/consumer-canary.mts --repo "$CANARY_REPO" --ref "$CANARY_REF" --spec "$CANARY_SPEC"

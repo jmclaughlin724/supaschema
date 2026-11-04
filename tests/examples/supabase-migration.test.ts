@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { checkMigrationSql } from "../../src/check/migration.js";
 import { loadConfig, type SupaschemaConfig } from "../../src/config/schema.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
@@ -102,7 +102,7 @@ describe("supabase sample project schema-edit migration", () => {
 });
 
 describe.skipIf(!databaseUrl)("supabase sample project verify", () => {
-  it("proves the rendered migration converges from -> to under per-migration mode", {
+  test("proves the rendered migration converges from -> to under per-migration mode", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {

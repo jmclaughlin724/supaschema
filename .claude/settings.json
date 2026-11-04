@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "env": {},
   "hooks": {
     "SessionStart": [
       {
@@ -9,7 +8,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-session-start.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-session-start.mts"
             ],
             "statusMessage": "Refreshing agent hook state",
             "timeout": 10
@@ -24,7 +23,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-user-prompt-submit.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-user-prompt-submit.mts"
             ],
             "statusMessage": "Checking prompt-scoped supaschema context",
             "timeout": 10
@@ -40,7 +39,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-pre-tool-use.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-pre-tool-use.mts"
             ],
             "statusMessage": "Checking required supaschema context",
             "timeout": 10
@@ -54,7 +53,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/supaschema-source-hook.mjs",
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/supaschema-source-hook.mts",
               "hook",
               "generated-artifact-edit",
               "--runtime",
@@ -74,7 +73,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-post-tool-use.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-post-tool-use.mts"
             ],
             "statusMessage": "Recording supaschema hook evidence",
             "timeout": 10
@@ -88,7 +87,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/supaschema-source-hook.mjs",
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/supaschema-source-hook.mts",
               "hook",
               "schema-write"
             ],
@@ -106,7 +105,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-post-tool-use-failure.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-post-tool-use-failure.mts"
             ],
             "statusMessage": "Recording failed supaschema hook evidence",
             "timeout": 10
@@ -121,7 +120,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-subagent-start.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-subagent-start.mts"
             ],
             "statusMessage": "Loading supaschema subagent context",
             "timeout": 10
@@ -136,7 +135,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-task-completed.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-task-completed.mts"
             ],
             "statusMessage": "Checking required supaschema skills",
             "timeout": 10
@@ -150,7 +149,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/context-stop.mjs"],
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/context-stop.mts"],
             "statusMessage": "Checking supaschema final-response evidence",
             "timeout": 10
           }
@@ -164,7 +163,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-subagent-stop.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-subagent-stop.mts"
             ],
             "statusMessage": "Checking supaschema subagent closeout",
             "timeout": 10
@@ -179,7 +178,7 @@
             "type": "command",
             "command": "node",
             "args": [
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-session-end.mjs"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/context-session-end.mts"
             ],
             "statusMessage": "Clearing supaschema agent hook state",
             "timeout": 2
@@ -187,5 +186,13 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": ["Bash(git add:*)"],
+    "deny": ["Read(*.env)", "Bash(rm:*)", "Bash(curl:*)"],
+    "defaultMode": "bypassPermissions"
+  },
+  "worktree": {
+    "bgIsolation": "none"
   }
 }

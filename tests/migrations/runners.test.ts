@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import {
   buildSupabaseCliCommand,
@@ -64,7 +64,7 @@ describe("migration runner planning", () => {
 });
 
 describe.skipIf(!databaseUrl)("direct PostgreSQL migration runner", () => {
-  it("applies pending files and records migration history", { timeout: 30_000 }, async () => {
+  test("applies pending files and records migration history", { timeout: 30_000 }, async () => {
     await withTempDatabase(async (url) => {
       const root = await migrationDir({
         "20260101000000_one.sql": `
@@ -92,7 +92,7 @@ CREATE TABLE app.runner_ok (id bigint PRIMARY KEY);
     });
   });
 
-  it("rolls back transactional migration SQL and does not insert history on failure", async () => {
+  test("rolls back transactional migration SQL and does not insert history on failure", async () => {
     await withTempDatabase(async (url) => {
       const root = await migrationDir({
         "20260101000000_bad.sql": `
@@ -118,7 +118,7 @@ SELECT missing_function();
     });
   });
 
-  it("applies concurrent companions outside the transaction and records one version", async () => {
+  test("applies concurrent companions outside the transaction and records one version", async () => {
     await withTempDatabase(async (url) => {
       const root = await migrationDir({
         "20260101000000_concurrent.concurrent.sql":

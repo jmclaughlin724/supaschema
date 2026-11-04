@@ -84,6 +84,8 @@ class MemorySubscriptionRenewalStore
 
   private transactionTail: Promise<void> = Promise.resolve();
 
+  scheduledAlarm: number | undefined;
+
   get(key: string): Promise<unknown | undefined> {
     return Promise.resolve(this.values.get(key));
   }
@@ -93,7 +95,8 @@ class MemorySubscriptionRenewalStore
     return Promise.resolve();
   }
 
-  setAlarm(_scheduledTime: number): Promise<void> {
+  setAlarm(scheduledTime: number): Promise<void> {
+    this.scheduledAlarm = scheduledTime;
     return Promise.resolve();
   }
 
@@ -828,6 +831,7 @@ describe("license worker", () => {
         ),
       },
     ];
+    const retrievalStatuses: [string, number][] = [];
 
     for (const legacy of cases) {
       const env = testEnv();
@@ -870,7 +874,7 @@ describe("license worker", () => {
           nowSeconds,
           fakeFetch
         );
-        expect(retrieval.status).toBe(503);
+        retrievalStatuses.push([legacy.sessionId, retrieval.status]);
       }
 
       await env.LICENSE_KV.put(
@@ -898,6 +902,8 @@ describe("license worker", () => {
           ?.exp
       ).toBe(initialPaidThrough + 2_700_000);
     }
+
+    expect(retrievalStatuses).toEqual([["cs_forged", 503]]);
   });
 
   it("routes renewed subscriptions independently of reverse KV state", async () => {

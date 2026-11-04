@@ -145,7 +145,7 @@ export function computedRelationshipFunctions(
     if (fn.args.length !== 1 || arg?.name !== "") {
       return false;
     }
-    const resolved = resolveColumnType(shapes, schema, arg.type);
+    const resolved = chaseColumnType(shapes, schema, arg.type);
     return (
       !isDeclaredDomainType(shapes, schema, arg.type) &&
       resolved.arrayDepth === 0 &&
@@ -661,14 +661,6 @@ function typeDecorations(sqlType: string): {
     baseTypeName: parenStart === -1 ? base : base.slice(0, parenStart).trim(),
     sawTypmod: parenStart !== -1,
   };
-}
-
-export function resolveColumnType(
-  shapes: SchemaShapes,
-  schemaName: string,
-  sqlType: string
-): ResolvedColumnType {
-  return chaseColumnType(shapes, schemaName, sqlType);
 }
 
 function resolveBaseColumnType(

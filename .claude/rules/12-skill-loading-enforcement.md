@@ -37,7 +37,7 @@ Hook denials require a positive classification owned by this rule: a parser-conf
 
 ## Parser-backed Bash boundary
 
-`scripts/agent-hooks/shell-command.mjs` parses shell source with `unbash`; option structure is interpreted with Node's `parseArgs`. PostgreSQL literals are classified by the repository's libpg-query parser in `scripts/agent-hooks/postgres-ddl.mjs`. Do not replace these owners with regular-expression scanning or command-text allowlists.
+`scripts/agent-hooks/shell-command.mts` parses shell source with `unbash`; option structure is interpreted with Node's `parseArgs`. PostgreSQL literals are classified by the repository's libpg-query parser in `scripts/agent-hooks/postgres-ddl.mts`. Do not replace these owners with regular-expression scanning or command-text allowlists.
 
 The Bash hook blocks only:
 
@@ -49,7 +49,7 @@ Git, branch, reset, push, merge, and worktree commands are outside hook enforcem
 
 ## Comment-free source boundary
 
-`scripts/agent-hooks/comment-free-source.mjs` denies a `Write`/`Edit`/`MultiEdit`/`apply_patch` that adds a `//` or block comment to a tracked JS/TS source file. Comment detection and the code-file classifier are owned by `scripts/lib/source-comments.mjs`, which parses proposed content with the TypeScript compiler API (`scripts/guards/lib/typescript-ast.js`); this is the same detector the push-time guard uses, so the two boundaries cannot drift. Parsing is structural, which is why `//` inside a string literal is not flagged where a regex would false-positive.
+`scripts/agent-hooks/comment-free-source.mts` denies a `Write`/`Edit`/`MultiEdit`/`apply_patch` that adds a `//` or block comment to a tracked JS/TS source file. Comment detection and the code-file classifier are owned by `scripts/lib/source-comments.mts`, which parses proposed content with the TypeScript compiler API (`scripts/guards/lib/typescript-ast.mts`); this is the same detector the push-time guard uses, so the two boundaries cannot drift. Parsing is structural, which is why `//` inside a string literal is not flagged where a regex would false-positive.
 
 The check denies only on a net-added comment: for `Edit`/`MultiEdit` it reconstructs the post-edit text and compares the comment multiset against the file's current comments, so edits to already-commented files and edits that re-touch a line near an existing comment are allowed. `Write` and `apply_patch` add-file scans treat the whole proposed content. An `apply_patch` update scans its `+`-prefixed added lines best-effort. Python (`.py`) and shell (`.sh`) comments stay push-guard-only because their detectors need a `python3` spawn or async WASM parse, unsuited to a synchronous hook. A crash in the check is a visible warning with no blocking decision.
 
@@ -68,9 +68,9 @@ npm test -- tests/agent-hooks/agent-hook-core.test.ts tests/agent-hooks/agent-ho
 
 Fix the canonical owner for the misbehaving check, then rerun the narrow hook test or `npm run guard:agent`. Do not weaken, skip, or hand-approve around a gate to close it out.
 
-- Wrong Bash allow or deny: fix the parser-backed classification in `scripts/agent-hooks/shell-command.mjs` or the PostgreSQL literal classifier in `scripts/agent-hooks/postgres-ddl.mjs`. Do not add a text allowlist or regex carve-out.
-- Wrong verification-domain evidence or a false completion conflict: fix `scripts/agent-hooks/command-evidence.mjs` or `scripts/agent-hooks/response-claims.mjs`.
-- Wrong comment-free allow or deny: fix the classification in `scripts/agent-hooks/comment-free-source.mjs` or the shared detector in `scripts/lib/source-comments.mjs`. Do not add a text allowlist or regex carve-out.
+- Wrong Bash allow or deny: fix the parser-backed classification in `scripts/agent-hooks/shell-command.mts` or the PostgreSQL literal classifier in `scripts/agent-hooks/postgres-ddl.mts`. Do not add a text allowlist or regex carve-out.
+- Wrong verification-domain evidence or a false completion conflict: fix `scripts/agent-hooks/command-evidence.mts` or `scripts/agent-hooks/response-claims.mts`.
+- Wrong comment-free allow or deny: fix the classification in `scripts/agent-hooks/comment-free-source.mts` or the shared detector in `scripts/lib/source-comments.mts`. Do not add a text allowlist or regex carve-out.
 - An unexpected parser, state, or hook crash: fix the reported source location. The event stays a visible warning with no policy decision, never a silent pass and never a hard denial.
 
 ## Done means

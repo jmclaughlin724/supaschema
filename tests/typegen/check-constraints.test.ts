@@ -549,7 +549,7 @@ void orderRow;
         2
       )}\n`
     );
-    await execFileAsync(
+    const { stderr, stdout } = await execFileAsync(
       process.execPath,
       [
         join(process.cwd(), "node_modules", "@typescript", "native", "bin", "tsc"),
@@ -560,6 +560,7 @@ void orderRow;
       ],
       { cwd: root, maxBuffer: 1024 * 1024 }
     );
+    expect(`${stdout}${stderr}`).toBe("");
   }, 20_000);
 
   it("enforces translated checks at runtime with SQL null semantics", async () => {

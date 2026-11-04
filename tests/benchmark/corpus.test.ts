@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { runCorpus } from "../../src/verify/corpus.js";
 
@@ -9,7 +9,7 @@ const databaseUrl = process.env.SUPASCHEMA_TEST_DATABASE_URL ?? resolveDatabaseU
 const committedCorpus = resolve(import.meta.dirname, "../../corpus/supabase-style");
 
 describe.skipIf(!databaseUrl)("corpus oracle", () => {
-  it("converges on the committed supabase-style corpus", async () => {
+  test("converges on the committed supabase-style corpus", async () => {
     const { diagnostics, report } = await runCorpus({
       corpusDir: committedCorpus,
       databaseUrl,
@@ -21,7 +21,7 @@ describe.skipIf(!databaseUrl)("corpus oracle", () => {
     expect(report.reconvergenceResidual).toEqual([]);
   });
 
-  it("fails loud when the tree declares state the catalog cannot reproduce", async () => {
+  test("fails loud when the tree declares state the catalog cannot reproduce", async () => {
     const root = await mkdtemp(join(tmpdir(), "supa-corpus-dirty-"));
     await mkdir(join(root, "migrations"));
     await mkdir(join(root, "tree"));

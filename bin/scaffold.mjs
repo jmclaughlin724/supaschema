@@ -1328,7 +1328,9 @@ function hasSqlFiles(dir) {
 }
 
 function rankCandidates(candidates, preferredOrder) {
-  const unique = Array.from(new Set(candidates)).sort();
+  const unique = Array.from(new Set(candidates)).sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
   return unique.sort((left, right) => rank(left, preferredOrder) - rank(right, preferredOrder));
 }
 

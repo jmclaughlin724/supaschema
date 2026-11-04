@@ -28,7 +28,7 @@ This rule owns the repo-local FastMCP agent server surface: local stdio, read-on
 
 ## Registry and Codex wiring
 
-- `fastmcp.json`, `.mcp.json`, `.codex/config.toml`, `services/agent-mcp/supaschema_agent_mcp/server.py`, `services/agent-mcp/tests/`, and `scripts/guards/fastmcp/check-fastmcp-agent.mjs` must stay aligned. `supaschema-docs` remains the separate remote public docs MCP.
+- `fastmcp.json`, `.mcp.json`, `.codex/config.toml`, `services/agent-mcp/supaschema_agent_mcp/server.py`, `services/agent-mcp/tests/`, and `scripts/guards/fastmcp/check-fastmcp-agent.mts` must stay aligned. `supaschema-docs` remains the separate remote public docs MCP.
 - `.mcp.json` is the exact local server registry. `.codex/config.toml` is the exact checked-in Codex activation and wiring owner: every configured server must exist in the registry, shared transport and auth fields must agree, and registry-only entries must be explicitly disabled.
 - The guard pins registry transport and auth fields, the Cloudflare input prompt and Codex bearer-token environment variable, local command/argv/env, remote URLs, approved Codex server keys, and fail-closed Codex approval settings.
 - Claude discovers project servers from `.mcp.json`. `enableAllProjectMcpServers`, `enabledMcpjsonServers`, and `disabledMcpjsonServers` in `.claude/settings.json` are optional user or project approval preferences, not required repository invariants. When those preferences are absent, Claude uses its normal project-server approval flow. The guard must not add, require, or compare those optional Claude keys.

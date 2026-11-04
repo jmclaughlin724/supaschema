@@ -6,8 +6,8 @@ import {
   check,
   hookImportGraph,
   reachableHookDependencies,
-} from "../../scripts/guards/agent-surface/check-hook-import-graph.mjs";
-import { sessionLifecycleEntrypoints } from "../../scripts/guards/agent-surface/hook-topology.mjs";
+} from "../../scripts/guards/agent-surface/check-hook-import-graph.mts";
+import { sessionLifecycleEntrypoints } from "../../scripts/guards/agent-surface/hook-topology.mts";
 
 describe("hook import graph", () => {
   it("keeps session lifecycle entrypoints isolated from the non-lifecycle runner", () => {
@@ -16,17 +16,17 @@ describe("hook import graph", () => {
       expect(graph).toContainEqual({
         file: entrypoint,
         kind: "relative",
-        specifier: "../../scripts/agent-hooks/session-lifecycle.mjs",
-        target: "scripts/agent-hooks/session-lifecycle.mjs",
+        specifier: "../../scripts/agent-hooks/session-lifecycle.mts",
+        target: "scripts/agent-hooks/session-lifecycle.mts",
       });
       expect(graph).not.toContainEqual(
         expect.objectContaining({
           file: entrypoint,
-          target: "scripts/agent-hooks/runner.mjs",
+          target: "scripts/agent-hooks/runner.mts",
         })
       );
       expect(reachableHookDependencies(graph, entrypoint)).not.toContain(
-        "scripts/agent-hooks/runner.mjs"
+        "scripts/agent-hooks/runner.mts"
       );
     }
   });
@@ -35,23 +35,23 @@ describe("hook import graph", () => {
     const root = await mkdtemp(join(tmpdir(), "supa-hook-import-lifecycle-"));
     await write(
       root,
-      ".claude/hooks/context-session-start.mjs",
-      'import "../../scripts/agent-hooks/session-lifecycle.mjs";\n'
+      ".claude/hooks/context-session-start.mts",
+      'import "../../scripts/agent-hooks/session-lifecycle.mts";\n'
     );
     await write(
       root,
-      "scripts/agent-hooks/session-lifecycle.mjs",
-      'import "./lifecycle-bridge.mjs";\n'
+      "scripts/agent-hooks/session-lifecycle.mts",
+      'import "./lifecycle-bridge.mts";\n'
     );
-    await write(root, "scripts/agent-hooks/lifecycle-bridge.mjs", 'import "./runner.mjs";\n');
-    await write(root, "scripts/agent-hooks/runner.mjs", "export {};\n");
+    await write(root, "scripts/agent-hooks/lifecycle-bridge.mts", 'import "./runner.mts";\n');
+    await write(root, "scripts/agent-hooks/runner.mts", "export {};\n");
 
     const graph = hookImportGraph(root);
-    expect(reachableHookDependencies(graph, ".claude/hooks/context-session-start.mjs")).toContain(
-      "scripts/agent-hooks/runner.mjs"
+    expect(reachableHookDependencies(graph, ".claude/hooks/context-session-start.mts")).toContain(
+      "scripts/agent-hooks/runner.mts"
     );
     expect(() => check(root)).toThrow(
-      ".claude/hooks/context-session-start.mjs reaches non-lifecycle hook runtime"
+      ".claude/hooks/context-session-start.mts reaches non-lifecycle hook runtime"
     );
   });
 
@@ -59,12 +59,12 @@ describe("hook import graph", () => {
     const root = await mkdtemp(join(tmpdir(), "supa-hook-import-lifecycle-builtin-"));
     await write(
       root,
-      ".claude/hooks/context-session-start.mjs",
-      'import "../../scripts/agent-hooks/session-lifecycle.mjs";\n'
+      ".claude/hooks/context-session-start.mts",
+      'import "../../scripts/agent-hooks/session-lifecycle.mts";\n'
     );
     await write(
       root,
-      "scripts/agent-hooks/session-lifecycle.mjs",
+      "scripts/agent-hooks/session-lifecycle.mts",
       'import "node:child_process";\n'
     );
 
@@ -76,12 +76,12 @@ describe("hook import graph", () => {
     await write(root, "package.json", '{"dependencies":{"zod":"1.0.0"}}\n');
     await write(
       root,
-      ".claude/hooks/context-session-start.mjs",
-      'import "../../scripts/agent-hooks/session-lifecycle.mjs";\n'
+      ".claude/hooks/context-session-start.mts",
+      'import "../../scripts/agent-hooks/session-lifecycle.mts";\n'
     );
-    await write(root, "scripts/agent-hooks/session-lifecycle.mjs", 'import "zod";\n');
+    await write(root, "scripts/agent-hooks/session-lifecycle.mts", 'import "zod";\n');
 
-    expect(() => check(root)).toThrow("scripts/agent-hooks/session-lifecycle.mjs -> zod");
+    expect(() => check(root)).toThrow("scripts/agent-hooks/session-lifecycle.mts -> zod");
   });
 
   it("maps multiline imports, re-exports, literal dynamic imports, and builtins", async () => {

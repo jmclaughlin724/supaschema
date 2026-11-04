@@ -37,6 +37,7 @@ interface PlanCommandOptions {
 }
 type DiffOptions = PlanCommandOptions & {
   checkChain: boolean;
+  databaseUrl?: string;
   dryRun?: boolean;
   failOnDiff?: boolean;
   json?: boolean;
@@ -44,6 +45,8 @@ type DiffOptions = PlanCommandOptions & {
   name?: string;
   out?: string;
   replace?: string;
+  routinePrivilegeDatabaseUrl?: string;
+  routinePrivilegeDrift?: boolean;
   summary?: boolean;
   watch?: boolean;
   writeHints?: string;
@@ -54,6 +57,7 @@ export interface DiffCommandContext {
   configPath: () => string | undefined;
   loadCliConfig: () => Promise<SupaschemaConfig>;
   printDiagnostics: (diagnostics: Diagnostic[]) => void;
+  resolveCliDatabaseUrl: (explicit?: string) => Promise<string | undefined>;
 }
 
 export function registerDiffCommands(program: Command, context: DiffCommandContext): void {
@@ -108,6 +112,14 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
       "--write-hints <file>",
       "write the gated destructive object keys as a hints.destructive skeleton for review (never overwrites)"
     )
+    .option(
+      "--routine-privilege-drift",
+      "also plan declared routine REVOKEs whose grantee still holds EXECUTE in the applied database (reads the database catalog)"
+    )
+    .option(
+      "--database-url <url>",
+      "database read by --routine-privilege-drift (default: --env, SUPASCHEMA_DATABASE_URL, then the local Supabase stack from supabase/config.toml)"
+    )
     .option("--timing", "print extract/plan/render phase timings to stderr")
     .option(
       "--watch",
@@ -129,7 +141,16 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
           return;
         }
       }
-      const resolved = await withSourceDefaults(options, config);
+      const routinePrivilegeDatabaseUrl = await resolveRoutinePrivilegeDatabaseUrl(
+        options,
+        context
+      );
+      const resolved = await withSourceDefaults(
+        routinePrivilegeDatabaseUrl === undefined
+          ? options
+          : { ...options, routinePrivilegeDatabaseUrl },
+        config
+      );
       if (printBlockingSourceDiagnostics(resolved, context)) {
         return;
       }
@@ -143,6 +164,27 @@ export function registerDiffCommands(program: Command, context: DiffCommandConte
 
 function isZeroSourceDiff(options: PlanCommandOptions): boolean {
   return options.from === undefined && options.to === undefined;
+}
+
+async function resolveRoutinePrivilegeDatabaseUrl(
+  options: DiffOptions,
+  context: Pick<DiffCommandContext, "resolveCliDatabaseUrl">
+): Promise<string | undefined> {
+  if (options.routinePrivilegeDrift !== true) {
+    if (options.databaseUrl !== undefined) {
+      throw new Error(
+        "--database-url only selects the database that --routine-privilege-drift reads; add --routine-privilege-drift or remove --database-url"
+      );
+    }
+    return;
+  }
+  const databaseUrl = await context.resolveCliDatabaseUrl(options.databaseUrl);
+  if (databaseUrl === undefined) {
+    throw new Error(
+      "no database URL for --routine-privilege-drift: pass --database-url, --env, set SUPASCHEMA_DATABASE_URL, or run inside a project with supabase/config.toml"
+    );
+  }
+  return databaseUrl;
 }
 
 type WithSources<T> = T & {
@@ -501,25 +543,30 @@ async function watchDiff(
   };
   await run();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const scheduleRun = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      run().catch((error: unknown) => {
+        process.stderr.write(
+          `${redactSecrets(error instanceof Error ? error.message : String(error))}\n`
+        );
+        process.exitCode = 2;
+      });
+    }, 250);
+  };
   for (const dir of watchedDirs) {
-    watch(dir, { recursive: true }, () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        run().catch((error: unknown) => {
-          process.stderr.write(
-            `${redactSecrets(error instanceof Error ? error.message : String(error))}\n`
-          );
-          process.exitCode = 2;
-        });
-      }, 250);
-    });
+    watch(dir, { recursive: true }, scheduleRun);
   }
   process.stdout.write(`watch: watching ${watchedDirs.join(", ")} (ctrl-c to exit)\n`);
   await new Promise(() => undefined);
 }
 
 function buildPlan(
-  options: WithSources<PlanCommandOptions> & { migrationsDir?: string; replace?: string },
+  options: WithSources<PlanCommandOptions> & {
+    migrationsDir?: string;
+    replace?: string;
+    routinePrivilegeDatabaseUrl?: string;
+  },
   config: SupaschemaConfig
 ): Promise<MigrationPlan> {
   const excludeMigrationFiles = replacedMigrationFiles(options.replace);
@@ -530,6 +577,9 @@ function buildPlan(
     from: options.from,
     ...(options.migrationsDir === undefined ? {} : { migrationsDir: options.migrationsDir }),
     mode: options.mode,
+    ...(options.routinePrivilegeDatabaseUrl === undefined
+      ? {}
+      : { routinePrivilegeDatabaseUrl: options.routinePrivilegeDatabaseUrl }),
     ...(options.schema === undefined ? {} : { schema: options.schema }),
     ...(options.timing === undefined ? {} : { timing: options.timing }),
     to: options.to,
@@ -1120,7 +1170,7 @@ export function renderPlanSummary(plan: MigrationPlan): string {
     operationCounts.set(label, entry);
   }
   lines.push(`  operations: ${plan.operations.length}`);
-  for (const [label, entry] of [...operationCounts.entries()].sort()) {
+  for (const [label, entry] of [...operationCounts.entries()].sort(compareEntryText)) {
     lines.push(colorizeSummaryLine(`    ${entry.count} ${label}`, entry.tone));
   }
   const diagnosticCounts = new Map<string, number>();
@@ -1132,10 +1182,16 @@ export function renderPlanSummary(plan: MigrationPlan): string {
     diagnosticCounts.set(label, (diagnosticCounts.get(label) ?? 0) + 1);
   }
   lines.push(`  diagnostics: ${plan.diagnostics.length}`);
-  for (const [label, count] of [...diagnosticCounts.entries()].sort()) {
+  for (const [label, count] of [...diagnosticCounts.entries()].sort(compareEntryText)) {
     lines.push(`    ${count} ${label}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function compareEntryText(left: readonly unknown[], right: readonly unknown[]): number {
+  const leftText = String(left);
+  const rightText = String(right);
+  return Number(leftText > rightText) - Number(leftText < rightText);
 }
 
 function renderCombinedSql(sql: string, concurrentSql: string): string {

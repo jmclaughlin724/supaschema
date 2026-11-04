@@ -331,7 +331,8 @@ function guardedBodySegments(body: string): string[] {
   const segments: string[] = [];
   let cursor = -1;
   for (const endIf of endIfOffsets) {
-    const start = thenOffsets.find((offset) => offset > cursor && offset < endIf);
+    const previousEnd = cursor;
+    const start = thenOffsets.find((offset) => offset > previousEnd && offset < endIf);
     if (start === undefined) {
       continue;
     }

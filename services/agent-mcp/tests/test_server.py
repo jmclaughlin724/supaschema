@@ -23,8 +23,7 @@ from pathlib import Path
 
 import pytest
 from fastmcp.client import Client
-from fastmcp.exceptions import ToolError
-from mcp.shared.exceptions import McpError
+from fastmcp.exceptions import McpError, ToolError
 
 import supaschema_agent_mcp.server as server
 from supaschema_agent_mcp.server import REPO_ROOT, mcp
@@ -189,7 +188,7 @@ async def test_targeted_repo_resources_are_readable() -> None:
 
     assert len(agents) == 1
     assert len(rule) == 1
-    assert "# Coding Agent Instructions" in agents[0].text
+    assert "# Coding Agent Contract" in agents[0].text
     assert "# Rule 11" in rule[0].text
 
 
@@ -242,12 +241,12 @@ def test_private_roots_track_canonical_owner() -> None:
 
 async def test_read_context_file_reads_tracked_stripe_catalog_tooling() -> None:
 
-    assert (REPO_ROOT / "scripts/stripe/create-catalog.mjs").is_file()
+    assert (REPO_ROOT / "scripts/stripe/create-catalog.mts").is_file()
 
     async with Client(transport=mcp) as client:
-        payload = await _read_context(client, "scripts/stripe/create-catalog.mjs")
+        payload = await _read_context(client, "scripts/stripe/create-catalog.mts")
 
-    assert payload["path"] == "scripts/stripe/create-catalog.mjs"
+    assert payload["path"] == "scripts/stripe/create-catalog.mts"
     assert "recommendedCatalog" in payload["text"]
 
 

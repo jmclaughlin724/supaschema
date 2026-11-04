@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 
 const workflowSources = [
   ".claude/skills/deep-research/references/workflow-backed-deep-research.js",
@@ -13,7 +13,7 @@ const workflowSources = [
 const hasWorkflowSources = workflowSources.every((file) => existsSync(join(process.cwd(), file)));
 
 describe.skipIf(!hasWorkflowSources)("extracted workflow sources", () => {
-  it("keeps deep-research resilient to failed searches and bounded fetches", async () => {
+  test("keeps deep-research resilient to failed searches and bounded fetches", async () => {
     const sourceText = await readFile(
       join(
         process.cwd(),
@@ -48,7 +48,7 @@ describe.skipIf(!hasWorkflowSources)("extracted workflow sources", () => {
     ).toBe(false);
   });
 
-  it("parses workflow code-review flags outside the review target", async () => {
+  test("parses workflow code-review flags outside the review target", async () => {
     const sourceText = await readFile(
       join(process.cwd(), ".claude/skills/code-review/references/workflow-backed-code-review.js"),
       "utf8"
@@ -59,7 +59,7 @@ describe.skipIf(!hasWorkflowSources)("extracted workflow sources", () => {
     expect(sourceText).toContain("FLAG_INSTRUCTIONS");
   });
 
-  it("keeps batch and worker extraction edit-only and runtime-neutral", async () => {
+  test("keeps batch and worker extraction edit-only and runtime-neutral", async () => {
     const [batchText, workerText] = await Promise.all([
       readFile(join(process.cwd(), ".claude/skills/batch/SKILL.md"), "utf8"),
       readFile(join(process.cwd(), ".claude/agents/worker.md"), "utf8"),

@@ -12,16 +12,16 @@ import { mkdir, mkdtemp, readFile, stat, utimes, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateBashPolicy } from "../../.claude/hooks/guards/bash-policy-checks.mjs";
+import { evaluateBashPolicy } from "../../.claude/hooks/guards/bash-policy-checks.mts";
 import {
   classifyCommandDomains,
   classifyCommandOutcomeDomains,
-} from "../../scripts/agent-hooks/command-evidence.mjs";
-import { shapeHookResult } from "../../scripts/agent-hooks/hook-output.mjs";
-import { claimedVerificationDomains } from "../../scripts/agent-hooks/response-claims.mjs";
-import { handleAgentHookEvent } from "../../scripts/agent-hooks/runner.mjs";
-import { handleSessionLifecycleEvent } from "../../scripts/agent-hooks/session-lifecycle.mjs";
-import { parseShellCommand } from "../../scripts/agent-hooks/shell-command.mjs";
+} from "../../scripts/agent-hooks/command-evidence.mts";
+import { shapeHookResult } from "../../scripts/agent-hooks/hook-output.mts";
+import { claimedVerificationDomains } from "../../scripts/agent-hooks/response-claims.mts";
+import { handleAgentHookEvent } from "../../scripts/agent-hooks/runner.mts";
+import { handleSessionLifecycleEvent } from "../../scripts/agent-hooks/session-lifecycle.mts";
+import { parseShellCommand } from "../../scripts/agent-hooks/shell-command.mts";
 import {
   inspectSessionState,
   normalizeState,
@@ -29,8 +29,8 @@ import {
   refreshSessionState,
   sessionStatePath,
   withSessionState,
-} from "../../scripts/agent-hooks/state.mjs";
-import { isCanonicalAgentSurfaceSource } from "../../scripts/skills/agent-surface-manifest.mjs";
+} from "../../scripts/agent-hooks/state.mts";
+import { isCanonicalAgentSurfaceSource } from "../../scripts/skills/agent-surface-manifest.mts";
 
 const repositoryRoot = process.cwd();
 const originalStateDir = process.env.STATE_DIR;
@@ -160,6 +160,9 @@ describe("narrow Bash enforcement", () => {
     expect(evaluate("curl postgresql://user:abcdefghijklmnop@localhost/database").action).toBe(
       "block"
     );
+    const exportedLiteral = ["abcd", "efgh", "ijkl", "mnop"].join("");
+    expect(evaluate(`export API_TOKEN=${exportedLiteral}`).action).toBe("block");
+    expect(evaluate("export API_TOKEN=$API_TOKEN")).toEqual({ action: "allow" });
     expect(evaluate("cat .env").action).toBe("block");
     expect(evaluate("command cat -- .env").action).toBe("block");
     expect(evaluate("cat config/.pgpass").action).toBe("block");
@@ -195,6 +198,10 @@ describe("narrow Bash enforcement", () => {
     expect(evaluate("rm -rf ..", { env, root }).action).toBe("block");
     expect(evaluate("rm -rf $TARGET", { env, root }).action).toBe("block");
     expect(evaluate("rm -rf build/*", { env, root }).action).toBe("block");
+    expect(
+      evaluate("if false; then true; elif true; then rm -rf /; fi", { env, root }).action
+    ).toBe("block");
+    expect(evaluate("{ rm -rf /; } > /dev/null", { env, root }).action).toBe("block");
     expect(evaluate('rm -rf / "unterminated', { env, root })).toEqual({ action: "allow" });
     expect(evaluate("rm -rf .tmp/cache", { env, root })).toEqual({ action: "allow" });
     expect(evaluate("rm -r /", { env, root })).toEqual({ action: "allow" });
@@ -323,7 +330,7 @@ describe("minimal private hook state", () => {
     expect(existsSync(`${sessionStatePath(payload)}.lock`)).toBe(false);
   });
 
-  it("persists no prompt or command text and uses private permissions", async () => {
+  it("persists no prompt or command text", async () => {
     const fixture = await hookFixture();
     process.env.STATE_DIR = fixture.stateDir;
     const sessionId = "private-state";
@@ -343,11 +350,26 @@ describe("minimal private hook state", () => {
     expect(serialized).not.toContain(commandMarker);
     expect(serialized).not.toContain("lastPrompt");
     expect(serialized).not.toContain("command");
-    if (process.platform !== "win32") {
-      expect((await stat(fixture.stateDir)).mode % 0o1000).toBe(0o700);
-      expect((await stat(file)).mode % 0o1000).toBe(0o600);
-    }
   });
+
+  it.skipIf(process.platform === "win32")(
+    "persists session state with private permissions",
+    async () => {
+      const fixture = await hookFixture();
+      process.env.STATE_DIR = fixture.stateDir;
+      const sessionId = "private-state-permissions";
+
+      await handleAgentHookEvent(
+        "UserPromptSubmit",
+        { prompt: "$fastmcp private permissions", session_id: sessionId },
+        fixture.options
+      );
+      await successfulCommand(sessionId, "npm test", fixture);
+
+      expect((await stat(fixture.stateDir)).mode % 0o1000).toBe(0o700);
+      expect((await stat(sessionStatePath({ session_id: sessionId }))).mode % 0o1000).toBe(0o600);
+    }
+  );
 
   it("recovers an empty lock directory instead of failing the hook", async () => {
     const fixture = await hookFixture();
@@ -459,11 +481,9 @@ describe("minimal private hook state", () => {
         const [ownerName] = readdirSync(lockDirectory);
         const ownerPath = join(lockDirectory, ownerName);
         const owner = JSON.parse(readFileSync(ownerPath, "utf8"));
-        expect(Object.keys(owner).sort()).toEqual(["acquiredAt", "pid", "token"]);
-        if (process.platform !== "win32") {
-          expect(statSync(lockDirectory).mode % 0o1000).toBe(0o700);
-          expect(statSync(ownerPath).mode % 0o1000).toBe(0o600);
-        }
+        expect(
+          Object.keys(owner).sort((left, right) => Number(left > right) - Number(left < right))
+        ).toEqual(["acquiredAt", "pid", "token"]);
 
         unlinkSync(ownerPath);
         writeFileSync(
@@ -481,6 +501,25 @@ describe("minimal private hook state", () => {
     unlinkSync(join(lockDirectory, successorName));
     rmdirSync(lockDirectory);
   });
+
+  it.skipIf(process.platform === "win32")(
+    "holds the session lock with private directory and owner permissions",
+    async () => {
+      const fixture = await hookFixture();
+      process.env.STATE_DIR = fixture.stateDir;
+      const payload = { session_id: "private-lock" };
+      const lockDirectory = `${sessionStatePath(payload)}.lock`;
+
+      withSessionState(payload, (state) => {
+        const [ownerName] = readdirSync(lockDirectory);
+        expect(statSync(lockDirectory).mode % 0o1000).toBe(0o700);
+        expect(statSync(join(lockDirectory, ownerName)).mode % 0o1000).toBe(0o600);
+        return { state };
+      });
+
+      expect(existsSync(lockDirectory)).toBe(false);
+    }
+  );
 
   it("does not rewrite state for no-op events", async () => {
     const fixture = await hookFixture();
@@ -503,24 +542,35 @@ describe("minimal private hook state", () => {
     expect((await stat(file)).mtimeMs).toBe(before);
   });
 
-  it("inspects state without repairing file mode and preserves malformed warnings", async () => {
+  it.skipIf(process.platform === "win32")(
+    "inspects state without repairing file mode",
+    async () => {
+      const fixture = await hookFixture();
+      process.env.STATE_DIR = fixture.stateDir;
+      const valid = { session_id: "read-only-mode-inspection" };
+      refreshSessionState(valid);
+      const validFile = sessionStatePath(valid);
+      fs.chmodSync(validFile, 0o644);
+
+      const validRecord = inspectSessionState(valid);
+
+      expect(validRecord.found).toBe(true);
+      expect(validRecord.warning).toBeUndefined();
+      expect(statSync(validFile).mode % 0o1000).toBe(0o644);
+    }
+  );
+
+  it("inspects valid state and preserves malformed warnings", async () => {
     const fixture = await hookFixture();
     process.env.STATE_DIR = fixture.stateDir;
     const valid = { session_id: "read-only-inspection" };
     refreshSessionState(valid);
-    const validFile = sessionStatePath(valid);
-    if (process.platform !== "win32") {
-      fs.chmodSync(validFile, 0o644);
-    }
 
     const validRecord = inspectSessionState(valid);
 
     expect(validRecord.found).toBe(true);
     expect(validRecord.warning).toBeUndefined();
     expect(validRecord.state.sessionId).toBe(valid.session_id);
-    if (process.platform !== "win32") {
-      expect(statSync(validFile).mode % 0o1000).toBe(0o644);
-    }
 
     const malformed = { session_id: "read-only-malformed" };
     const malformedFile = sessionStatePath(malformed);

@@ -1,3 +1,5 @@
+import { cloudflare } from "blume/deploy";
+
 const optionalKeywordList = {
   "~standard": {
     version: 1,
@@ -26,22 +28,31 @@ export default {
       keywords: optionalKeywordList,
     },
   },
+  logo: {
+    image: {
+      alt: "supaschema",
+      dark: "/images/brand/supaschema-logo-dark.png",
+      light: "/images/brand/supaschema-logo-light.png",
+    },
+    text: "",
+  },
+  seo: {
+    og: {
+      image: "/images/brand/og-background.png",
+    },
+  },
   github: {
     owner: "jmclaughlin724",
     repo: "supaschema",
   },
-  ai: {
+  agents: {
     mcp: {
       enabled: true,
       name: "supaschema-docs",
       route: "/docs/mcp",
     },
   },
-  deployment: {
-    adapter: "cloudflare",
-    output: "server",
-    site: "https://supaschema.com",
-  },
+  deployment: cloudflare({ site: "https://supaschema.com" }),
   redirects: [
     { from: "/", to: "/introduction" },
     { from: "/docs", to: "/introduction" },

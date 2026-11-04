@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-const script = resolve(import.meta.dirname, "../..", "scripts/release/preflight.mjs");
-const notesScript = resolve(import.meta.dirname, "../..", "scripts/release/changelog-notes.mjs");
+const script = resolve(import.meta.dirname, "../..", "scripts/release/preflight.mts");
+const notesScript = resolve(import.meta.dirname, "../..", "scripts/release/changelog-notes.mts");
 const tempDirs: string[] = [];
 const releaseCommit = "0123456789abcdef0123456789abcdef01234567";
 

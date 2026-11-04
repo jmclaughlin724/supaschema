@@ -58,6 +58,8 @@ Agent-authored task work must be performed directly on intended canonical files 
 - If a file changed since it was read, re-read it, preserve unrelated hunks, and continue.
 - Treat watcher, dev-server, hook, subagent, and parallel-agent output as user-owned unless the current task started that process.
 - If another session owns overlapping generated output, preserve unrelated hunks and rerun the canonical sync or generator.
+- If a path disappears between inspection and mutation, or its owner becomes uncertain, stop the affected mutation, re-resolve the live path and owner, and continue only independent in-scope work until that boundary is clear.
+- Treat a denied or blocked command as an enforced boundary. Do not retry the same destructive effect through another command, tool, script, or file operation.
 
 ## Delete, rename, and export-shape sweeps
 

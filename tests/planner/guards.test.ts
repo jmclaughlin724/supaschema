@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
 import { extractSourceModel } from "../../src/source/extract.js";
@@ -354,7 +354,7 @@ describe("managed schema policy", () => {
 });
 
 describe.skipIf(!databaseUrl)("non-idempotent migration detection", () => {
-  it("fails verification when the migration does not produce the target state", {
+  test("fails verification when the migration does not produce the target state", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { auditModel } from "../../src/audit.js";
 import { checkMigrationSql } from "../../src/check/migration.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
@@ -83,7 +83,7 @@ describe("foreign data wrapper tier", () => {
 });
 
 describe.skipIf(!databaseUrl)("verify environment pack", () => {
-  it("applies auth/cron-dependent trees against bare temporary databases", {
+  test("applies auth/cron-dependent trees against bare temporary databases", {
     timeout: 30_000,
   }, async () => {
     const treeSql =
@@ -106,7 +106,7 @@ describe.skipIf(!databaseUrl)("verify environment pack", () => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("fails fast with a capability diagnostic for a NOCREATEDB role", async () => {
+  test("fails fast with a capability diagnostic for a NOCREATEDB role", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const role = `supa_nocreate_${process.pid}`;
@@ -137,7 +137,7 @@ describe.skipIf(!databaseUrl)("verify environment pack", () => {
 });
 
 describe.skipIf(!databaseUrl)("bootstrap ordering proof", () => {
-  it("creates the full real-shape tree from empty and verifies catalog parity", async () => {
+  test("creates the full real-shape tree from empty and verifies catalog parity", async () => {
     const emptyRoot = await mkdtemp(join(tmpdir(), "supa-empty-"));
     const tree = "dir:tests/fixtures/realshape/tree";
     const from = await extractSourceModel(`dir:${emptyRoot.replaceAll("\\", "/")}`);

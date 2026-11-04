@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { check } from "../../../scripts/guards/repo-surface/check-repo-layout.mjs";
+import { check } from "../../../scripts/guards/repo-surface/check-repo-layout.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 function trackedRepo(files: Record<string, string>): string {

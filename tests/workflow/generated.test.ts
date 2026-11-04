@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { checkMigrationSql } from "../../src/check/migration.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
@@ -70,7 +70,7 @@ async function renderScenario(scenario: Scenario): Promise<string> {
 }
 
 describe.each(scenarios)("generated migration standards: $name", (scenario) => {
-  it("parses cleanly through the PostgreSQL parser", async () => {
+  test("parses cleanly through the PostgreSQL parser", async () => {
     const sql = await renderScenario(scenario);
     const parsed = await parseSqlAst(sql);
 
@@ -78,7 +78,7 @@ describe.each(scenarios)("generated migration standards: $name", (scenario) => {
     expect(parsed.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("passes supaschema's own replay-safety checker", async () => {
+  test("passes supaschema's own replay-safety checker", async () => {
     const sql = await renderScenario(scenario);
     const diagnostics = await checkMigrationSql(
       sql,
@@ -88,14 +88,14 @@ describe.each(scenarios)("generated migration standards: $name", (scenario) => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("carries the lock and statement timeout preamble", async () => {
+  test("carries the lock and statement timeout preamble", async () => {
     const sql = await renderScenario(scenario);
 
     expect(sql).toContain("SET lock_timeout = ");
     expect(sql).toContain("SET statement_timeout = ");
   });
 
-  it("never emits CASCADE and never references catalogs unqualified", async () => {
+  test("never emits CASCADE and never references catalogs unqualified", async () => {
     const sql = await renderScenario(scenario);
     const diagnostics = await checkMigrationSql(
       sql,
@@ -116,7 +116,7 @@ describe.each(scenarios)("generated migration standards: $name", (scenario) => {
     expect(hasUnqualifiedRegproc(sql)).toBe(false);
   });
 
-  it.skipIf(!databaseUrl)(
+  test.skipIf(!databaseUrl)(
     "applies twice against a disposable database and matches the target catalog",
     { timeout: 60_000 },
     async () => {

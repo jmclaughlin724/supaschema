@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 (2026-11-04)
+
+### Minor Changes
+
+- ccd237f: Add `supaschema rebaseline` and the typed `rebaselineMigrations` API for dry-run-first whole-history replacement. The workflow inventories discarded migration-only operations, optionally retains exact reviewed operational migrations, verifies a new declarative baseline before writing, restores the previous files on replacement failure, refreshes generated contracts, and stages migration deletions with the closure without mutating target databases.
+
+### Patch Changes
+
+- 9f0994f: Update runtime dependencies to their latest stable releases. With `pgsql-deparser` 18.4, `normalize: "deparse"` renders a sequence increment change as `SET INCREMENT 5` instead of `SET INCREMENT BY 5`; both forms parse to the same PostgreSQL tree.
+
 ## 0.5.7 (2026-08-08)
 
 ### Patch Changes
@@ -26,7 +36,7 @@
   Separate OAuth state from entitlement tokens with purpose-bound signed-token types, random nonces, and browser-bound callback cookies. Use GitHub App installation permissions for private repositories without requesting the broad classic OAuth `repo` scope, and derive subscription token expiry from Stripe Basil paid-through timestamps with price matching, monotonic renewal, and invoice replay protection.
 
 - 7fda852: Embed build identity (version, commit, build time, tree state) in the published package as `dist/build-info.json`, report it in `supaschema doctor`, and warn on stderr when the CLI runs as an unreleased build or from a checkout whose compiled `dist` is older than `src` (`SUPA_BUILD_STALE_DIST`). `--version` output is unchanged; the warnings never fail the command and can be suppressed with `--quiet` or `SUPASCHEMA_SUPPRESS_BUILD_WARNING=1`.
-- 7fda852: Publish immutable `X.Y.(Z+1)-dev.<sha>` snapshot builds to the npm `next` dist-tag on every protected `main` push via a new `snapshot.yml` workflow (OIDC trusted publishing, provenance attestation, post-publish registry smoke). Stable releases on `latest` are unchanged. Consumers can now dogfood the current main build as an exact version pin instead of linking a local checkout. Requires a one-time npm trusted publisher entry for `snapshot.yml`; see the release docs.
+- 7fda852: Publish immutable `X.Y.(Z+1)-dev.<sha>` snapshot builds to the npm `next` dist-tag on every protected `main` push via a new `snapshot.yml` workflow (OIDC trusted publishing, provenance attestation, post-publish registry smoke). Stable releases on `latest` are unchanged. Consumers can now dogfood the current main build as an exact version pin instead of linking a local checkout. Requires a one-time npm trusted publisher entry for `snapshot.yml`; see the release docs. Superseded: snapshot publishing now runs in the `publish-next` job in `release.yml`; npm trusted publisher setup names `release.yml`, and `snapshot.yml` no longer exists.
 
 ## 0.5.5 (2026-07-28)
 

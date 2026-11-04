@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderCodexAgent, renderCodexRule } from "../../scripts/skills/codex-rules.mjs";
-import { publicSkillNames, syncAgentSurfaces } from "../../scripts/skills/sync-llm.mjs";
+import { renderCodexAgent, renderCodexRule } from "../../scripts/skills/codex-rules.mts";
+import { publicSkillNames, syncAgentSurfaces } from "../../scripts/skills/sync-llm.mts";
 
 const publicSupaschemaSkill = `---
 name: supaschema
@@ -122,7 +122,9 @@ describe("agent surface sync", { timeout: 30_000 }, () => {
     const indexEntries = (await readFile(join(root, "agent-bundle/docs/index.md"), "utf8"))
       .split("\n")
       .filter((line) => line.startsWith("- ["));
-    expect(indexEntries).toEqual([...indexEntries].sort());
+    expect(indexEntries).toEqual(
+      [...indexEntries].sort((left, right) => Number(left > right) - Number(left < right))
+    );
   });
 
   it("repairs generated Codex hook config drift", async () => {
@@ -133,7 +135,7 @@ describe("agent surface sync", { timeout: 30_000 }, () => {
     const result = syncAgentSurfaces({ root });
 
     expect(result.codexHookConfig).toBe(1);
-    expect(await readFile(join(root, ".codex/hooks.json"), "utf8")).toContain("context-stop.mjs");
+    expect(await readFile(join(root, ".codex/hooks.json"), "utf8")).toContain("context-stop.mts");
   });
 
   it("reconciles minimal Claude source directories into generated mirrors", async () => {
@@ -388,7 +390,7 @@ async function seedRequiredAgentBundleInputs(root: string): Promise<void> {
   await write(root, ".agents/prompts/supaschema-install.md", "install prompt\n");
   await write(root, ".claude/skills/supaschema/references/maintain.md", "maintain reference\n");
   await write(root, ".claude/skills/supaschema/SKILL.md", publicSupaschemaSkill);
-  await write(root, ".claude/hooks/guards/bash-policy-checks.mjs", "bash guard\n");
+  await write(root, ".claude/hooks/guards/bash-policy-checks.mts", "bash guard\n");
   await write(root, ".claude/hooks/sync-llm-on-claude-surface-change.mjs", "sync hook\n");
   await write(root, ".claude/rules/supaschema.md", "# Supaschema Rule\n");
   await write(root, ".codex/hooks.json", "{}\n");

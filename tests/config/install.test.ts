@@ -1012,7 +1012,7 @@ describe("init project setup", () => {
       ".vscode/settings.json",
       ".mcp.json",
       ".claude/settings.json",
-      "cclsp.json",
+      "lsp-soleaux.json",
       "components.json",
       "postgres-language-server.jsonc",
       "pyproject.toml",
@@ -1043,7 +1043,7 @@ describe("init project setup", () => {
     }
     expect(existsSync(join(consumer, ".vscode/settings.json"))).toBe(false);
     expect(existsSync(join(consumer, ".mcp.json"))).toBe(false);
-    expect(existsSync(join(consumer, "cclsp.json"))).toBe(false);
+    expect(existsSync(join(consumer, "lsp-soleaux.json"))).toBe(false);
     expect(existsSync(join(consumer, "postgres-language-server.jsonc"))).toBe(false);
     expect(existsSync(join(consumer, "pyproject.toml"))).toBe(false);
     expect(existsSync(join(consumer, "components.json"))).toBe(false);

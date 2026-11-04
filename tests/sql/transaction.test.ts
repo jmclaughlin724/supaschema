@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { checkMigrationSql } from "../../src/check/migration.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { extractSourceModel } from "../../src/source/extract.js";
@@ -119,7 +119,7 @@ describe("Supabase view security_invoker policy", () => {
 });
 
 describe.skipIf(!databaseUrl)("transactional verify fidelity", () => {
-  it("fails per-migration verify for enum add-then-use and passes per-statement", {
+  test("fails per-migration verify for enum add-then-use and passes per-statement", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {

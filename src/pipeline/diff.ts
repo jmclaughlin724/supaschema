@@ -1,4 +1,5 @@
 import { performance } from "node:perf_hooks";
+import { extractRoutineExecuteGrantees } from "../catalog/extract.js";
 import type { SupaschemaConfig } from "../config/schema.js";
 import { buildSchemaPlanningContext, type SchemaPlanningMode } from "../planner/context.js";
 import { planSchemaDiff } from "../planner/schema.js";
@@ -14,6 +15,7 @@ interface SchemaDiffPlanOptions {
   from: string;
   migrationsDir?: string;
   mode?: SchemaPlanningMode;
+  routinePrivilegeDatabaseUrl?: string;
   schema?: string;
   timing?: boolean;
   to: string;
@@ -27,7 +29,19 @@ export async function buildSchemaDiffPlan(options: SchemaDiffPlanOptions): Promi
   if (!(context.from && context.to && context.migrationCorpus)) {
     return blockedPlan(options.from, options.to, context.diagnostics);
   }
+  let appliedRoutineExecuteGrantees: Map<string, Set<string>> | undefined;
+  if (options.routinePrivilegeDatabaseUrl !== undefined) {
+    const applied = await extractRoutineExecuteGrantees({
+      config: options.config,
+      databaseUrl: options.routinePrivilegeDatabaseUrl,
+    });
+    if (!(applied instanceof Map)) {
+      return blockedPlan(options.from, options.to, [...context.diagnostics, applied]);
+    }
+    appliedRoutineExecuteGrantees = applied;
+  }
   const plan = planSchemaDiff(context.from, context.to, {
+    ...(appliedRoutineExecuteGrantees === undefined ? {} : { appliedRoutineExecuteGrantees }),
     config: options.config,
     migrationCorpus: context.migrationCorpus,
   });

@@ -162,6 +162,16 @@ const diagnosticSummaries: Record<string, string> = {
     "View replacement drops, renames, or reorders output columns; CREATE OR REPLACE VIEW cannot apply it.",
   SUPA_PLAN_VIEW_REPLACE_VERIFY_REQUIRED:
     "CREATE OR REPLACE VIEW only allows compatible column shapes; verify before release.",
+  SUPA_REBASELINE_RETAIN_UNKNOWN:
+    "A requested retained operational migration is absent from the configured migration corpus.",
+  SUPA_REBASELINE_REPLACEMENT_FAILED:
+    "Rebaseline could not replace migration history and generated contracts; the previous files were restored when rollback succeeded.",
+  SUPA_REBASELINE_STAGE_FAILED:
+    "The new baseline was written, but Git could not stage the migration deletions and generated closure.",
+  SUPA_REBASELINE_TARGET_REBUILD_REQUIRED:
+    "Rebaseline replaced repository history without changing applied target history; each affected target needs a separately authorized rebuild or reconciliation before sync.",
+  SUPA_REBASELINE_VERIFY_REQUIRED:
+    "Rebaseline --write requires a disposable database to prove the baseline before replacing migration history.",
   SUPA_REPLAY_ORDER_GAP:
     "Migration history could not be replayed in filename order; an ALTER/DROP targets an absent object or a CREATE duplicates one.",
   SUPA_REPLAY_UNSUPPORTED:
@@ -174,6 +184,8 @@ const diagnosticSummaries: Record<string, string> = {
     "A routine with unproven dependencies blocks relation or type changes until the dependency proof is structural.",
   SUPA_ROUTINE_DYNAMIC_SQL_DEPENDENCY_UNKNOWN:
     "A PL/pgSQL routine contains dynamic SQL whose relation and column dependencies cannot be proven statically.",
+  SUPA_ROUTINE_PRIVILEGE_DRIFT:
+    "diff --routine-privilege-drift found a grantee that still holds EXECUTE on a routine in the applied database although the declarative schema revokes it; the plan re-applies the declared REVOKE.",
   SUPA_RULE_DESTRUCTIVE_OP:
     "A destructive operation will run in this migration; review it for data loss and lock impact before deploy.",
   SUPA_RULE_EXPOSED_TABLE_WITHOUT_RLS:
@@ -377,6 +389,101 @@ const diagnosticDefinitionOverrides: Record<string, Omit<DiagnosticDefinition, "
       "Make historical SQL replayable without changing already-applied intent, or supply the missing historical object/order statement.",
       "Rerun doctor; auto will select the configured migrations corpus.",
       "Generate and verify the next forward migration locally.",
+    ],
+  },
+  SUPA_REBASELINE_RETAIN_UNKNOWN: {
+    cause:
+      "An explicit --retain path did not resolve to a SQL file in the configured migration directory, so Supaschema cannot prove which operational behavior to preserve.",
+    commands: ["supaschema rebaseline", "supaschema rebaseline --retain <file...>"],
+    docs: "docs/commands/rebaseline.mdx",
+    expectedEvidence: [
+      "every retained path appears in the dry-run inventory",
+      "retained files and their operations are absent from the removal and discard sets",
+    ],
+    forbiddenActions: [
+      "do not use --retain as a broad history-preservation shortcut",
+      "do not retain data backfills or structural migrations that the declarative baseline replaces",
+    ],
+    recoverySteps: [
+      "Run the dry run and select exact reviewed operational migration paths.",
+      "Keep only behavior that the declarative tree cannot own, such as managed Realtime policies.",
+      "Rerun with those exact --retain paths before --write.",
+    ],
+  },
+  SUPA_REBASELINE_REPLACEMENT_FAILED: {
+    cause:
+      "The new baseline passed planning and verification, but history replacement or generated-contract refresh failed.",
+    commands: ["supaschema rebaseline", "supaschema rebaseline --write"],
+    docs: "docs/commands/rebaseline.mdx",
+    expectedEvidence: [
+      "the diagnostic states whether the previous history and contracts were restored",
+      "a following dry run classifies the remaining files without an unreported partial replacement",
+    ],
+    forbiddenActions: [
+      "do not hand-edit generated migrations or contracts to complete the replacement",
+      "do not delete the remaining history to force a clean state",
+    ],
+    recoverySteps: [
+      "Resolve the named filesystem or generator failure.",
+      "Confirm the rollback result in the diagnostic and inspect the migration directory.",
+      "Rerun the dry run before retrying --write.",
+    ],
+  },
+  SUPA_REBASELINE_STAGE_FAILED: {
+    cause:
+      "The baseline and generated contracts were written, but Git rejected the selected closure paths or staging operation.",
+    commands: ["git status --short", "supaschema rebaseline"],
+    docs: "docs/commands/rebaseline.mdx",
+    expectedEvidence: [
+      "the new baseline exists and the old migration files are removed",
+      "the final staged set contains every migration deletion and generated closure file",
+    ],
+    forbiddenActions: [
+      "do not reset unrelated staged work to simplify the closure",
+      "do not delete the new baseline to make staging easier",
+    ],
+    recoverySteps: [
+      "Inspect the Git error and current staged/unstaged paths.",
+      "Resolve the path or repository-state failure without discarding unrelated work.",
+      "Stage the migration deletions and generated closure explicitly.",
+    ],
+  },
+  SUPA_REBASELINE_TARGET_REBUILD_REQUIRED: {
+    cause:
+      "Rebaseline replaces repository files only; it does not mutate applied history or schema in any target database.",
+    commands: ["supaschema migrations", "supaschema sync"],
+    docs: "docs/commands/rebaseline.mdx",
+    expectedEvidence: [
+      "the target rebuild or reconciliation has separate authorization",
+      "migrations and sync reconcile after the target operation completes",
+    ],
+    forbiddenActions: [
+      "do not treat rebaseline as target history repair",
+      "do not reset or repair a linked/production target from the rebaseline command",
+    ],
+    recoverySteps: [
+      "Review the new baseline and discarded-operation inventory.",
+      "Rebuild or reconcile each affected target through its separately authorized owner.",
+      "Run migrations and sync only after that target operation completes.",
+    ],
+  },
+  SUPA_REBASELINE_VERIFY_REQUIRED: {
+    cause:
+      "Replacing migration history without an apply-twice and reconvergence proof could leave an unusable sole baseline.",
+    commands: ["supaschema rebaseline --write --database-url <disposable-url>"],
+    docs: "docs/commands/rebaseline.mdx",
+    expectedEvidence: [
+      "the new baseline passes static replay checks",
+      "verify applies it twice and reports no reconvergence error before any tracked file changes",
+    ],
+    forbiddenActions: [
+      "do not bypass verification with direct file deletion",
+      "do not point verification at a linked or production database",
+    ],
+    recoverySteps: [
+      "Resolve a disposable PostgreSQL URL whose role can create and drop databases.",
+      "Rerun the dry run and review the discarded-operation inventory.",
+      "Run --write with that verification URL.",
     ],
   },
   SUPA_REPLAY_ORDER_GAP: {

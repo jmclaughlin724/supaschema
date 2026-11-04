@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { extractCatalogModel } from "../../src/catalog/extract.js";
 import { applySql, withTemporaryDatabases } from "../../src/database/admin.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
@@ -11,7 +11,7 @@ import { extractSourceModel } from "../../src/source/extract.js";
 const databaseUrl = process.env.SUPASCHEMA_TEST_DATABASE_URL ?? resolveDatabaseUrl();
 
 describe.skipIf(!databaseUrl)("catalog visibility", () => {
-  it("excludes underscore schemas owned by Supabase platform roles without a schema allowlist", async () => {
+  test("excludes underscore schemas owned by Supabase platform roles without a schema allowlist", async () => {
     const runtimeRole = "supabase_admin";
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
@@ -55,7 +55,7 @@ describe.skipIf(!databaseUrl)("catalog visibility", () => {
     }
   });
 
-  it("subtracts _bootstrap inventory from live database sources", async () => {
+  test("subtracts _bootstrap inventory from live database sources", async () => {
     const root = await mkdtemp(join(tmpdir(), "supa-bootstrap-inventory-"));
     const schemaRoot = join(root, "supabase", "schemas");
     await mkdir(join(schemaRoot, "_bootstrap"), { recursive: true });
@@ -87,7 +87,7 @@ describe.skipIf(!databaseUrl)("catalog visibility", () => {
     });
   });
 
-  it("preserves unpopulated materialized views as WITH NO DATA", async () => {
+  test("preserves unpopulated materialized views as WITH NO DATA", async () => {
     await withTemporaryDatabases(databaseUrl, 1, async ([url]) => {
       if (!url) {
         throw new Error("expected temporary database URL");
@@ -109,7 +109,7 @@ describe.skipIf(!databaseUrl)("catalog visibility", () => {
     });
   });
 
-  it("skips the initdb default public schema comment but keeps custom ones", async () => {
+  test("skips the initdb default public schema comment but keeps custom ones", async () => {
     await withTemporaryDatabases(databaseUrl, 2, async ([defaultUrl, customUrl]) => {
       if (!(defaultUrl && customUrl)) {
         throw new Error("expected temporary database URLs");

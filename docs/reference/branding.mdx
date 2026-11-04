@@ -8,7 +8,7 @@ Use this page when adding, replacing, or wiring supaschema logo and brand assets
 
 ## Asset locations
 
-Committed public brand assets live under `docs/images/brand/`.
+Committed public brand assets live under `docs/public/images/brand/`. The favicon lives at `docs/public/favicon.png` because Blume detects the favicon by filename at the `public/` root.
 
 | Asset                        | Use                                                                          |
 | ---------------------------- | ---------------------------------------------------------------------------- |
@@ -16,7 +16,6 @@ Committed public brand assets live under `docs/images/brand/`.
 | `supaschema-logo-dark.png`   | Docs site logo for dark mode.                                                |
 | `supaschema-logo-readme.png` | GitHub README logo with a solid background for light and dark GitHub themes. |
 | `supaschema-mark.png`        | Square 1:1 emblem for icon and favicon derivatives.                          |
-| `favicon.png`                | Docs site favicon.                                                           |
 | `github-social-preview.png`  | Repository social preview uploaded in GitHub settings.                       |
 | `og-background.png`          | Social thumbnail background.                                                 |
 
@@ -30,10 +29,11 @@ Docs branding is configured in `docs/blume.config.ts`.
 
 Use root-relative paths for docs assets:
 
-- The light logo points to `/images/brand/supaschema-logo-light.png`.
-- The dark logo points to `/images/brand/supaschema-logo-dark.png`.
-- The favicon points to `/images/brand/favicon.png`.
-- The social image points to `/images/brand/og-background.png`.
+- `logo.image.light` points to `/images/brand/supaschema-logo-light.png`.
+- `logo.image.dark` points to `/images/brand/supaschema-logo-dark.png`.
+- `logo.text` is empty because the logo image already contains the wordmark.
+- The favicon is served at `/favicon.png`.
+- `seo.og.image` points to `/images/brand/og-background.png`, the default social image for every page.
 
 Set a per-page `seo.image` only when a page needs a different social image from the site default.
 
@@ -47,9 +47,9 @@ Set a per-page `seo.image` only when a page needs a different social image from 
 
 ## GitHub usage
 
-The root README uses `docs/images/brand/supaschema-logo-readme.png` with a repo-relative path. GitHub rewrites relative image paths for the active branch, so keep README images repo-relative instead of using docs-root `/images/**` paths.
+The root README uses `docs/public/images/brand/supaschema-logo-readme.png` with a repo-relative path. GitHub rewrites relative image paths for the active branch, so keep README images repo-relative instead of using docs-root `/images/**` paths.
 
-Upload `docs/images/brand/github-social-preview.png` manually in the repository's **Settings** page under **Social preview**. GitHub does not automatically read that file from the repository.
+Upload `docs/public/images/brand/github-social-preview.png` manually in the repository's **Settings** page under **Social preview**. GitHub does not automatically read that file from the repository.
 
 <Frame caption="GitHub social preview">
   <img
@@ -62,8 +62,8 @@ Upload `docs/images/brand/github-social-preview.png` manually in the repository'
 
 Generated benchmark and concept images stay in their existing directories:
 
-- `docs/images/benchmarks/**`
-- `docs/images/concepts/**`
+- `docs/public/images/benchmarks/**`
+- `docs/public/images/concepts/**`
 
 Do not hand-edit those SVGs. Update the generator source, then regenerate:
 

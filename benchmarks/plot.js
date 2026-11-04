@@ -22,7 +22,9 @@ for (const input of inputs) {
   environments.push({
     arch: payload.environment.arch,
     completedAt: payload.completedAt,
-    fixtures: [...new Set(payload.results.map((item) => item.fixture))].sort(),
+    fixtures: [...new Set(payload.results.map((item) => item.fixture))].sort(
+      (left, right) => Number(left > right) - Number(left < right)
+    ),
     iterations: payload.environment.iterations,
     node: payload.environment.node,
     platform: payload.environment.platform,
@@ -105,7 +107,9 @@ function renderSummaryMarkdown() {
     }
   }
   lines.push("", "## Scaling Across Fixtures (median seconds, ratio vs own smallest)", "");
-  const adapters = [...new Set(allResults.map((item) => item.adapter))].sort();
+  const adapters = [...new Set(allResults.map((item) => item.adapter))].sort(
+    (left, right) => Number(left > right) - Number(left < right)
+  );
   lines.push(`| Tool | ${fixtures.join(" | ")} |`, `| --- |${" --- |".repeat(fixtures.length)}`);
   for (const adapter of adapters) {
     const medians = fixtures.map((fixture) => {

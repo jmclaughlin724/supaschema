@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { planSchemaDiff } from "../../src/planner/schema.js";
 import { renderMigrationSplit } from "../../src/render/migration.js";
@@ -57,7 +57,7 @@ describe("concurrent index split rendering", () => {
 });
 
 describe.skipIf(!databaseUrl)("verify role pre-creation", () => {
-  it("excludes pg_cron because it cannot be installed in disposable databases", {
+  test("excludes pg_cron because it cannot be installed in disposable databases", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -89,7 +89,7 @@ describe.skipIf(!databaseUrl)("verify role pre-creation", () => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("applies bootstrap inventory statements as SQL text", { timeout: 60_000 }, async () => {
+  test("applies bootstrap inventory statements as SQL text", { timeout: 60_000 }, async () => {
     if (!databaseUrl) {
       return;
     }
@@ -120,7 +120,7 @@ describe.skipIf(!databaseUrl)("verify role pre-creation", () => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("materializes schema models in dependency order instead of file order", {
+  test("materializes schema models in dependency order instead of file order", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -157,7 +157,7 @@ describe.skipIf(!databaseUrl)("verify role pre-creation", () => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("materializes composite types after view row-type dependencies", {
+  test("materializes composite types after view row-type dependencies", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -191,7 +191,7 @@ describe.skipIf(!databaseUrl)("verify role pre-creation", () => {
     expect(diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 
-  it("fails without --ensure-roles and passes with it for grants to missing roles", {
+  test("fails without --ensure-roles and passes with it for grants to missing roles", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -272,7 +272,7 @@ describe("verify environment stub surface", () => {
 });
 
 describe.skipIf(!databaseUrl)("verify managed-schema stub", () => {
-  it("flags a failure referencing an un-stubbed managed schema", {
+  test("flags a failure referencing an un-stubbed managed schema", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -316,7 +316,7 @@ describe.skipIf(!databaseUrl)("verify managed-schema stub", () => {
 });
 
 describe.skipIf(!databaseUrl)("verify policy subquery reconvergence", () => {
-  it("allows a migration that reduces unrelated pre-existing target drift", {
+  test("allows a migration that reduces unrelated pre-existing target drift", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -352,7 +352,7 @@ describe.skipIf(!databaseUrl)("verify policy subquery reconvergence", () => {
     expect(diagnostics.some((item) => item.code === "SUPA_VERIFY_PREEXISTING_DRIFT")).toBe(true);
   });
 
-  it("converges a policy whose subquery references its own relation", {
+  test("converges a policy whose subquery references its own relation", {
     timeout: 60_000,
   }, async () => {
     if (!databaseUrl) {
@@ -417,7 +417,7 @@ describe("verify remote-database guard", () => {
 });
 
 describe.skipIf(!databaseUrl)("CLI concurrent companion file", () => {
-  it("writes the .concurrent.sql companion when diffing to a file", {
+  test("writes the .concurrent.sql companion when diffing to a file", {
     timeout: 30_000,
   }, async () => {
     const directory = await mkdtemp(join(tmpdir(), "supa-split-"));

@@ -13,7 +13,7 @@ Maintainer scripts: guards, agent-hook runtime, agent-surface sync, docs linting
 
 ## Top-level scripts
 
-- `cclsp-language-id-proxy.mjs` — cclsp language-ID normalization adapter
+- `cclsp-language-id-proxy.mjs` — TypeScript language-ID normalization adapter
 - `clean-dist.mjs`, `ensure-bin-executable.mjs` — build lifecycle helpers
 - `format-sh.mjs`, `format-toml.mjs` — per-language formatter adapters
 

@@ -45,5 +45,5 @@ fi
 
 node benchmarks/plot.js benchmarks/results/comparison.json benchmarks/results/comparison-realistic.json \
   benchmarks/results/comparison-xl.json benchmarks/results/comparison-xxl.json > /dev/null
-cp benchmarks/results/*-latency.svg benchmarks/results/*-correctness.svg docs/images/benchmarks/
+cp benchmarks/results/*-latency.svg benchmarks/results/*-correctness.svg docs/public/images/benchmarks/
 echo "DONE plot-and-charts"

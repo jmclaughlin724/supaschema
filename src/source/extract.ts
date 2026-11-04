@@ -18,7 +18,7 @@ import type {
   SchemaObject,
   SupaschemaConfig,
 } from "../types.js";
-import { normalizeSourceObjects } from "./normalize.js";
+import { declaredRoutineRevokes, normalizeSourceObjects } from "./normalize.js";
 import { reconstructModelFromMigrations } from "./replay.js";
 
 const execFileAsync = promisify(execFile);
@@ -136,6 +136,13 @@ export function filterModelBySchemas(model: SchemaModel, schemas: Set<string>): 
   );
   return {
     ...filtered,
+    ...(model.declaredRoutineRevokes === undefined
+      ? {}
+      : {
+          declaredRoutineRevokes: model.declaredRoutineRevokes.filter((object) =>
+            schemas.has(objectSchema(object))
+          ),
+        }),
     diagnostics: filtered.diagnostics.filter(
       (item) =>
         !schemaScopedDiagnosticCodes.has(item.code) ||
@@ -374,11 +381,13 @@ async function modelFromSqlFiles(
     diagnostics.push(...extracted.diagnostics);
     ordinal = extracted.nextOrdinal;
   }
+  const routineRevokes = declaredRoutineRevokes(extractedObjects);
   const objects = await normalizeSourceObjects(extractedObjects, diagnostics, {
     normalize: config.normalize === "deparse",
   });
   diagnostics.push(...duplicateKeyDiagnostics(objects));
   return {
+    declaredRoutineRevokes: routineRevokes,
     diagnostics,
     fingerprint: fingerprintObjects(objects),
     formatVersion: MODEL_FORMAT_VERSION,

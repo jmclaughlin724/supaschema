@@ -6,20 +6,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ endCalls: 0 }));
 
 vi.mock("pg", () => {
-  class FakeClient {
-    connect(): Promise<void> {
-      return Promise.resolve();
-    }
-    query(text: unknown): Promise<{ rows: { can_create: boolean }[] }> {
-      if (typeof text === "string" && text.includes("can_create")) {
-        return Promise.resolve({ rows: [{ can_create: false }] });
-      }
-      return Promise.resolve({ rows: [] });
-    }
-    end(): Promise<void> {
-      state.endCalls += 1;
-      return Promise.resolve();
-    }
+  function FakeClient() {
+    return {
+      connect: (): Promise<void> => Promise.resolve(),
+      end: (): Promise<void> => {
+        state.endCalls += 1;
+        return Promise.resolve();
+      },
+      query: (text: unknown): Promise<{ rows: { can_create: boolean }[] }> => {
+        if (typeof text === "string" && text.includes("can_create")) {
+          return Promise.resolve({ rows: [{ can_create: false }] });
+        }
+        return Promise.resolve({ rows: [] });
+      },
+    };
   }
   return { Client: FakeClient, default: { Client: FakeClient } };
 });

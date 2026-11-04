@@ -115,7 +115,10 @@ export function isBuiltinDefaultGrant(
   if (!defaults) {
     return false;
   }
-  const normalized = normalizePrivileges([...privileges].sort(), kindPhrase);
+  const normalized = normalizePrivileges(
+    [...privileges].sort((left, right) => Number(left > right) - Number(left < right)),
+    kindPhrase
+  );
   return (
     normalized.join(",") === "ALL" ||
     normalized.join(",") === defaults.join(",") ||

@@ -4,7 +4,7 @@
     "ultracite/biome/type-aware",
     "ultracite/biome/vitest"
   ],
-  "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "root": true,
   "vcs": {
     "enabled": true,
@@ -41,12 +41,17 @@
       "!agent-bundle",
       "!**/*.astro",
       "!tests/fixtures/sample-project/supabase/functions",
+      "!tests/fixtures/agent-hooks/retired-sync-llm-on-claude-surface-change.mjs",
       "!.agents",
       "!.codex"
     ]
   },
   "html": {
     "experimentalFullSupportEnabled": true
+  },
+  "yaml": {
+    "formatter": { "enabled": false },
+    "linter": { "enabled": false }
   },
   "javascript": {
     "experimentalEmbeddedSnippetsEnabled": true
@@ -100,6 +105,16 @@
         "services/license-worker/src/cloudflare-workers.d.ts",
         "services/license-worker/src/worker.ts"
       ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnresolvedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["docs/blume.config.ts"],
       "linter": {
         "rules": {
           "correctness": {

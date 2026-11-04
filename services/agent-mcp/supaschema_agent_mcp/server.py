@@ -143,9 +143,9 @@ mcp = FastMCP(
 )
 
 READ_ONLY_TOOL = ToolAnnotations(
-    readOnlyHint=True,
-    openWorldHint=False,
-    idempotentHint=True,
+    read_only_hint=True,
+    open_world_hint=False,
+    idempotent_hint=True,
 )
 
 RepoContextAction = Literal["search", "read", "agent-instructions"]

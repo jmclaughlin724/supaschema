@@ -154,7 +154,7 @@ export const excludedMaintainerFiles = [
   ".vscode/settings.json",
   ".vscode/extensions.json",
   ".mcp.json",
-  "cclsp.json",
+  "lsp-soleaux.json",
   "components.json",
   "postgres-language-server.jsonc",
   "pyproject.toml",

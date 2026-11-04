@@ -35,7 +35,7 @@ Outputs:
 - per fixture: `<fixture>-latency.svg`, `<fixture>-correctness.svg`, and `<fixture>-results.json` (that fixture's rows plus source-run metadata)
 - `summary.md` — per-fixture result tables plus a cross-fixture scaling table (each tool's median and its ratio vs its own smallest fixture)
 
-The published chart set in `docs/images/benchmarks/` (per-fixture latency/correctness charts plus the four head-to-head charts: the README hero bars-only xl chart, full xl, xxl, and the full-workflow lane) is rebuilt in one command from the four reference comparison JSONs:
+The published chart set in `docs/public/images/benchmarks/` (per-fixture latency/correctness charts plus the four head-to-head charts: the README hero bars-only xl chart, full xl, xxl, and the full-workflow lane) is rebuilt in one command from the four reference comparison JSONs:
 
 ```bash
 npm run bench:plot:docs

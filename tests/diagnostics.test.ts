@@ -56,6 +56,28 @@ describe("structured diagnostic catalog", () => {
     });
   });
 
+  it("ships verification, replacement, and target recovery for rebaseline", () => {
+    expect(diagnosticDefinitions.SUPA_REBASELINE_VERIFY_REQUIRED).toMatchObject({
+      docs: "docs/commands/rebaseline.mdx",
+      forbiddenActions: expect.arrayContaining([
+        "do not bypass verification with direct file deletion",
+      ]),
+    });
+    expect(diagnosticDefinitions.SUPA_REBASELINE_REPLACEMENT_FAILED).toMatchObject({
+      recoverySteps: expect.arrayContaining(["Rerun the dry run before retrying --write."]),
+    });
+    expect(diagnosticDefinitions.SUPA_REBASELINE_RETAIN_UNKNOWN).toMatchObject({
+      recoverySteps: expect.arrayContaining([
+        "Run the dry run and select exact reviewed operational migration paths.",
+      ]),
+    });
+    expect(diagnosticDefinitions.SUPA_REBASELINE_TARGET_REBUILD_REQUIRED).toMatchObject({
+      forbiddenActions: expect.arrayContaining([
+        "do not reset or repair a linked/production target from the rebaseline command",
+      ]),
+    });
+  });
+
   it("ships a regenerate-first recovery for contract drift", () => {
     expect(diagnosticDefinitions.SUPA_TYPES_CONTRACT_DRIFT).toMatchObject({
       commands: expect.arrayContaining(["supaschema types", "supaschema types --check"]),

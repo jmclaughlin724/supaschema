@@ -217,7 +217,7 @@ async function treeSchemas(sql) {
       names.add(object.ref.name);
     }
   }
-  return [...names].sort();
+  return [...names].sort((left, right) => Number(left > right) - Number(left < right));
 }
 
 function parseArgs(argv) {

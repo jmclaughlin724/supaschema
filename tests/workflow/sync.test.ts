@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { Client } from "pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { registerReportCommands } from "../../src/cli/reports.js";
 import { resolveConfig } from "../../src/config/schema.js";
 import { resolveDatabaseUrl } from "../../src/database/url.js";
@@ -23,6 +23,7 @@ import { parseLineage } from "../../src/migrations/lineage.js";
 import { stageGeneratedMigrations } from "../../src/migrations/stage.js";
 import { resolveGenerationSourceDefaults } from "../../src/planner/context.js";
 import type { Diagnostic } from "../../src/types.js";
+import { rebaselineMigrations } from "../../src/workflow/rebaseline.js";
 import { syncMigrations } from "../../src/workflow/sync.js";
 import { resolveSyncTargets } from "../../src/workflow/targets.js";
 
@@ -1483,7 +1484,11 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
         "database/migrations/20260101000000_generated.sql",
         "database/migrations/20260101000000_generated.concurrent.sql",
       ]);
-      expect([...staged].sort()).toEqual([...result.staged].sort());
+      expect(
+        [...staged].sort((left, right) => Number(left > right) - Number(left < right))
+      ).toEqual(
+        [...result.staged].sort((left, right) => Number(left > right) - Number(left < right))
+      );
     } finally {
       process.chdir(previousCwd);
     }
@@ -1654,7 +1659,7 @@ function requiredDatabaseUrl(): string {
 }
 
 describe.skipIf(!databaseUrl)("sync (against a target)", () => {
-  it("auto-applies the configured local direct target with the default workflow", async () => {
+  test("auto-applies the configured local direct target with the default workflow", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_auto_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1712,7 +1717,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("generates and applies a second edit after an applied predecessor", {
+  test("generates and applies a second edit after an applied predecessor", {
     timeout: 30_000,
   }, async () => {
     const admin = new Client({ connectionString: databaseUrl });
@@ -1798,7 +1803,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("auto-deploys an approved remote direct target", async () => {
+  test("auto-deploys an approved remote direct target", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_remote_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1877,7 +1882,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("refuses an approved remote target without a separate verify database", async () => {
+  test("refuses an approved remote target without a separate verify database", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_remote_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1951,7 +1956,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("runs verify before applying an approved remote target", async () => {
+  test("runs verify before applying an approved remote target", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_apply_remote_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2027,7 +2032,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies pending files with the direct PostgreSQL runner", async () => {
+  test("applies pending files with the direct PostgreSQL runner", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_direct_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2088,7 +2093,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies target pending files from the selected target history", async () => {
+  test("applies target pending files from the selected target history", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_target_verify_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2161,7 +2166,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("applies pending chains without collapsing per-file transaction boundaries", async () => {
+  test("applies pending chains without collapsing per-file transaction boundaries", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_verify_chain_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2227,7 +2232,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("refuses on ghost history", async () => {
+  test("refuses on ghost history", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2282,7 +2287,7 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
     }
   });
 
-  it("runs deploy type safety from the selected target catalog", async () => {
+  test("runs deploy type safety from the selected target catalog", async () => {
     const admin = new Client({ connectionString: databaseUrl });
     await admin.connect();
     const db = `supa_sync_type_catalog_${process.pid}_${Math.random().toString(16).slice(2, 8)}`;
@@ -2332,5 +2337,292 @@ describe.skipIf(!databaseUrl)("sync (against a target)", () => {
       await admin.query(`DROP DATABASE IF EXISTS ${db} WITH (FORCE)`);
       await admin.end();
     }
+  });
+});
+
+describe("rebaselineMigrations", () => {
+  async function fixture(
+    options: {
+      concurrent?: boolean;
+      identity?: boolean;
+      partition?: boolean;
+      typesFile?: string;
+    } = {}
+  ) {
+    const cwd = await mkdtemp(join(tmpdir(), "supa-rebaseline-"));
+    const schemaDir = join(cwd, "schemas");
+    const directory = join(cwd, "migrations");
+    await mkdir(schemaDir, { recursive: true });
+    await mkdir(directory, { recursive: true });
+    const partitionSql =
+      options.partition === true
+        ? "CREATE TABLE app.events (id bigint NOT NULL, created_at date NOT NULL) PARTITION BY RANGE (created_at);\nCREATE TABLE app.events_2026_01 (id bigint NOT NULL, created_at date NOT NULL);\nALTER TABLE ONLY app.events ATTACH PARTITION app.events_2026_01 FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');\n"
+        : "";
+    const identitySql =
+      options.identity === true
+        ? "CREATE TABLE app.identified (id bigint NOT NULL, value text);\nALTER TABLE app.identified ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (SEQUENCE NAME app.identified_id_seq START WITH 1 INCREMENT BY 1);\n"
+        : "";
+    await writeFile(
+      join(schemaDir, "app.sql"),
+      `CREATE SCHEMA app;\nCREATE TABLE app.settings (id bigint PRIMARY KEY, value text);\n${options.concurrent === true ? "CREATE INDEX CONCURRENTLY settings_value_idx ON app.settings (value);\n" : ""}${partitionSql}${identitySql}`
+    );
+    await writeFile(
+      join(directory, "20260101000000_manual.sql"),
+      "INSERT INTO app.settings (id, value) VALUES (1, 'retired');\n"
+    );
+    await writeFile(
+      join(directory, "20260102000000_generated.sql"),
+      "-- supaschema: lineage from=old to=old\nSELECT 1;\n"
+    );
+    await writeFile(join(directory, "notes.txt"), "preserve\n");
+    const config = {
+      schemaPaths: ["schemas"],
+      typesFile: options.typesFile ?? "generated/database.ts",
+      zodFile: "generated/database.zod.ts",
+    };
+    await writeFile(join(cwd, "supaschema.config.json"), JSON.stringify(config));
+    execFileSync("git", ["init"], { cwd, stdio: "ignore" });
+    execFileSync("git", ["add", "migrations"], { cwd, stdio: "ignore" });
+    execFileSync(
+      "git",
+      ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "history"],
+      { cwd, stdio: "ignore" }
+    );
+    return { config, cwd, directory };
+  }
+
+  it("reports discarded operations without writing during dry-run", async () => {
+    const { config, cwd, directory } = await fixture();
+    const before = await readdir(directory);
+
+    const result = await rebaselineMigrations({ config, cwd, directory });
+
+    expect(result.written).toBe(false);
+    expect(result.operationCount).toBeGreaterThan(0);
+    expect(result.discardedOperations.map((operation) => operation.kind)).toContain(
+      "data-statement"
+    );
+    expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+    expect(await readdir(directory)).toEqual(before);
+  });
+
+  it("preserves history when planning rejects the baseline", async () => {
+    const { config, cwd, directory } = await fixture({ concurrent: true });
+
+    const result = await rebaselineMigrations({ config, cwd, directory, write: true });
+
+    expect(result.written).toBe(false);
+    expect(result.diagnostics.some((item) => item.severity === "error")).toBe(true);
+    expect(await readdir(directory)).toContain("20260101000000_manual.sql");
+    expect(await readdir(directory)).toContain("20260102000000_generated.sql");
+  });
+
+  it("rejects unknown retained migration paths", async () => {
+    const { config, cwd, directory } = await fixture();
+
+    const result = await rebaselineMigrations({
+      config,
+      cwd,
+      directory,
+      retainFiles: [join(directory, "missing.sql")],
+    });
+
+    expect(result.diagnostics.map((item) => item.code)).toContain("SUPA_REBASELINE_RETAIN_UNKNOWN");
+    expect(result.written).toBe(false);
+  });
+
+  it("requires verification before replacing history", async () => {
+    const { config, cwd, directory } = await fixture();
+
+    const result = await rebaselineMigrations({ config, cwd, directory, write: true });
+
+    expect(result.written).toBe(false);
+    expect(result.diagnostics.map((item) => item.code)).toContain(
+      "SUPA_REBASELINE_VERIFY_REQUIRED"
+    );
+    expect(await readdir(directory)).toContain("20260101000000_manual.sql");
+  });
+
+  describe.skipIf(!databaseUrl)("write", () => {
+    it("replaces history, stages deletions, preserves non-SQL files, and converges on rerun", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture();
+      const first = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(first.written).toBe(true);
+      expect(first.targetRebuildRequired).toBe(true);
+      expect(first.diagnostics.map((item) => item.code)).toContain(
+        "SUPA_REBASELINE_TARGET_REBUILD_REQUIRED"
+      );
+      expect(first.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+      expect(first.writtenContractPaths).toHaveLength(2);
+      expect(first.staged).toContain("migrations/20260101000000_manual.sql");
+      expect(first.staged).toContain("migrations/20260102000000_generated.sql");
+      expect(first.staged).not.toContain("migrations/notes.txt");
+      const remaining = await readdir(directory);
+      expect(remaining).toContain("notes.txt");
+      expect(remaining.filter((file) => file.endsWith(".sql"))).toHaveLength(1);
+      expect(parseLineage(await readFile(first.baselinePath ?? "", "utf8"))).not.toBeNull();
+
+      const second = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+      expect(second.alreadyConverged).toBe(true);
+      expect(second.written).toBe(false);
+      expect(second.removedFiles).toEqual([]);
+      expect(await readdir(directory)).toEqual(remaining);
+    });
+
+    it("re-versions reviewed operational migrations after the baseline", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture();
+      const retained = join(directory, "20260101000000_manual.sql");
+      await writeFile(retained, "DO $$ BEGIN NULL; END $$;\n");
+
+      const result = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        retainFiles: [retained],
+        write: true,
+      });
+
+      expect(result.written).toBe(true);
+      expect(result.retainedFiles).toHaveLength(1);
+      expect(result.retainedFiles[0]).not.toBe(retained);
+      expect(result.removedFiles).toContain(retained);
+      expect(result.discardedOperations.map((operation) => operation.kind)).not.toContain(
+        "do-block"
+      );
+      expect(await readFile(result.retainedFiles[0] ?? "", "utf8")).toContain("BEGIN NULL");
+      expect(await readdir(directory)).not.toContain("20260101000000_manual.sql");
+      expect(await readdir(directory)).not.toContain("20260102000000_generated.sql");
+
+      const rerun = await rebaselineMigrations({ config, cwd, directory, retainFiles: [retained] });
+      expect(rerun).toMatchObject({ alreadyConverged: true });
+    });
+
+    it("restores the old history and contracts when replacement fails", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture({ typesFile: "blocked/database.ts" });
+      await writeFile(join(cwd, "blocked"), "not a directory\n");
+
+      const result = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(result.written).toBe(false);
+      expect(result.diagnostics.map((item) => item.code)).toContain(
+        "SUPA_REBASELINE_REPLACEMENT_FAILED"
+      );
+      expect(result.diagnostics.at(-1)?.hint).toContain("were restored");
+      expect(await readdir(directory)).toContain("20260101000000_manual.sql");
+      expect(await readdir(directory)).toContain("20260102000000_generated.sql");
+      expect((await readdir(directory)).filter((file) => file.endsWith("_baseline.sql"))).toEqual(
+        []
+      );
+    });
+
+    it("includes bootstrap inventory before the declarative baseline", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture();
+      const bootstrapDir = join(cwd, "schemas", "_bootstrap");
+      await mkdir(bootstrapDir, { recursive: true });
+      await writeFile(
+        join(bootstrapDir, "00_extensions.sql"),
+        "CREATE EXTENSION IF NOT EXISTS pgcrypto;\nCREATE EXTENSION IF NOT EXISTS pg_cron;\n"
+      );
+
+      const result = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+      expect(result.written).toBe(true);
+      const baseline = await readFile(result.baselinePath ?? "", "utf8");
+      expect(baseline.indexOf("CREATE EXTENSION IF NOT EXISTS pgcrypto")).toBeGreaterThanOrEqual(0);
+      expect(baseline.indexOf("CREATE EXTENSION IF NOT EXISTS pgcrypto")).toBeLessThan(
+        baseline.indexOf("CREATE SCHEMA IF NOT EXISTS app")
+      );
+      expect(baseline).toContain("CREATE EXTENSION IF NOT EXISTS pg_cron");
+    });
+
+    it("verifies identity creation twice with a column guard", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture({ identity: true });
+
+      const result = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+      expect(result.written).toBe(true);
+      expect(await readFile(result.baselinePath ?? "", "utf8")).toContain("pg_attribute");
+    });
+
+    it("verifies partition attachment twice with a catalog guard", {
+      timeout: 120_000,
+    }, async () => {
+      const { config, cwd, directory } = await fixture({ partition: true });
+
+      const result = await rebaselineMigrations({
+        config,
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(result.written).toBe(true);
+      expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+      expect(await readFile(result.baselinePath ?? "", "utf8")).toContain("pg_inherits");
+    });
+
+    it("verifies and writes a concurrent companion", { timeout: 120_000 }, async () => {
+      const { config, cwd, directory } = await fixture({ concurrent: true });
+
+      const result = await rebaselineMigrations({
+        config: { ...config, transactionMode: "per-statement" },
+        cwd,
+        databaseUrl: requiredDatabaseUrl(),
+        directory,
+        write: true,
+      });
+
+      expect(result.written).toBe(true);
+      expect(result.generatedMigrationPaths.some((file) => file.endsWith(".concurrent.sql"))).toBe(
+        true
+      );
+      expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
+      expect((await readdir(directory)).filter((file) => file.endsWith(".sql"))).toHaveLength(2);
+    });
   });
 });

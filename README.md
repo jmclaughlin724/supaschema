@@ -1,7 +1,7 @@
 # supaschema
 
 <p align="center">
-  <img src="docs/images/brand/supaschema-logo-readme.png" alt="supaschema logo" width="720">
+  <img src="docs/public/images/brand/supaschema-logo-readme.png" alt="supaschema logo" width="720">
 </p>
 
 [![CI](https://github.com/jmclaughlin724/supaschema/actions/workflows/ci.yml/badge.svg)](https://github.com/jmclaughlin724/supaschema/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/supaschema)](https://www.npmjs.com/package/supaschema) [![npm downloads](https://img.shields.io/npm/dm/supaschema)](https://www.npmjs.com/package/supaschema) [![node](https://img.shields.io/node/v/supaschema)](https://github.com/jmclaughlin724/supaschema/blob/main/package.json) [![license](https://img.shields.io/npm/l/supaschema)](https://github.com/jmclaughlin724/supaschema/blob/main/LICENSE) [![codecov](https://codecov.io/gh/jmclaughlin724/supaschema/branch/main/graph/badge.svg)](https://codecov.io/gh/jmclaughlin724/supaschema) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jmclaughlin724/supaschema/badge)](https://scorecard.dev/viewer/?uri=github.com/jmclaughlin724/supaschema) [![install size](https://packagephobia.com/badge?p=supaschema)](https://packagephobia.com/result?p=supaschema)
@@ -16,9 +16,10 @@ Free and open source under MIT. Install the package, run `supaschema init`, and 
 
 ```bash
 supaschema sync  # diff, check, types, stage, safety, apply/dry-run, reconcile
+supaschema rebaseline  # dry-run a whole-history baseline replacement
 ```
 
-![supaschema vs diff engines at 1,000 tables: median diff latency bars](docs/images/benchmarks/head-to-head-xl-bars.svg)
+![supaschema vs diff engines at 1,000 tables: median diff latency bars](docs/public/images/benchmarks/head-to-head-xl-bars.svg)
 
 ## Why supaschema
 
@@ -97,7 +98,7 @@ Read config as four decisions: `schemaPaths` and `migrationsDir` define the recu
 
 | Surface | What it gives you |
 | --- | --- |
-| CLI | `diff`, `stage`, `apply`, `types`, `check`, `verify`, `sync`, `scan`, `migrations`, `config validate`, inspection commands, diagnostics, and shell completion. |
+| CLI | `diff`, `stage`, `apply`, `types`, `check`, `verify`, `sync`, `rebaseline`, `scan`, `migrations`, `config validate`, inspection commands, diagnostics, and shell completion. |
 | Library | Typed ESM exports for the same core pipeline, including extraction, planning, rendering, checking, verification, apply/sync, type generation, and config loading. |
 | Agent bundle | A public-safe prompt, rules, skills, and hooks for Claude, Codex, and AGENTS-compatible tools working in a consuming repository. |
 | Docs site | Task guides, command pages, configuration references, comparison pages, support matrix, diagnostics, and support guidance. |

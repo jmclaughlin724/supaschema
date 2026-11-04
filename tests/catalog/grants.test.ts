@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { collectDefaultPrivileges, collectGrants } from "../../src/catalog/grants.js";
+import { extractRoutineExecuteGrantees } from "../../src/catalog/extract.js";
+import {
+  collectDefaultPrivileges,
+  collectGrants,
+  collectRoutineExecuteGrantees,
+} from "../../src/catalog/grants.js";
 import type { CatalogQuery } from "../../src/catalog/query.js";
+import { applySql, withTemporaryDatabases } from "../../src/database/admin.js";
+import { resolveDatabaseUrl } from "../../src/database/url.js";
 import { extractObjectsFromSql } from "../../src/sql/extract.js";
+
+const databaseUrl = process.env.SUPASCHEMA_TEST_DATABASE_URL ?? resolveDatabaseUrl();
 
 type GrantQueryName = "column" | "function" | "relation" | "revoked-functions" | "schema" | "type";
 
@@ -264,6 +273,101 @@ describe("catalog grant extraction", () => {
         'GRANT SELECT ON TABLE "app"."items" TO "app_user" WITH GRANT OPTION'
     );
   });
+});
+
+describe("applied routine EXECUTE grantees", () => {
+  it("groups non-owner EXECUTE grantees from explicit and default routine ACLs", async () => {
+    const calls: string[] = [];
+    const pool: CatalogQuery = {
+      query(sql) {
+        calls.push(sql);
+        return Promise.resolve({
+          rows: [
+            {
+              args: "uuid, text",
+              grantees: ["PUBLIC", "service_role"],
+              name: "store_secret",
+              schema: "app",
+            },
+            { args: "", grantees: "{PUBLIC}", name: "ping", schema: "app" },
+          ],
+        });
+      },
+    };
+
+    const granteesByRoutine = await collectRoutineExecuteGrantees(pool);
+
+    expect(granteesByRoutine).toEqual(
+      new Map([
+        ["app.store_secret(uuid, text)", new Set(["PUBLIC", "service_role"])],
+        ["app.ping()", new Set(["PUBLIC"])],
+      ])
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("aclexplode(coalesce(p.proacl, acldefault('f', p.proowner)))");
+    expect(calls[0]).toContain("acl.grantee <> p.proowner");
+  });
+
+  it("keys catalog routine signatures the way declarative REVOKE targets are keyed", async () => {
+    const pool: CatalogQuery = {
+      query() {
+        return Promise.resolve({
+          rows: [
+            {
+              args: 'app."Mood", double precision[]',
+              grantees: ["anon"],
+              name: "set_mood",
+              schema: "app",
+            },
+          ],
+        });
+      },
+    };
+    const declared = await extractObjectsFromSql(
+      'REVOKE ALL ON FUNCTION app.set_mood(app."Mood", double precision[]) FROM anon;'
+    );
+    const declaredIdentity = declared.objects.find((object) => object.metadata.verb === "REVOKE")
+      ?.metadata.targetIdentity;
+
+    const granteesByRoutine = await collectRoutineExecuteGrantees(pool);
+
+    expect(typeof declaredIdentity).toBe("string");
+    expect([...granteesByRoutine.keys()]).toEqual([declaredIdentity]);
+    expect(granteesByRoutine.get(String(declaredIdentity))).toEqual(new Set(["anon"]));
+  });
+
+  it.skipIf(!databaseUrl)(
+    "reads PUBLIC EXECUTE from a default routine ACL and omits a revoked routine",
+    async () => {
+      if (databaseUrl === undefined) {
+        throw new Error("expected a verification database URL");
+      }
+      await withTemporaryDatabases(databaseUrl, 1, async ([url]) => {
+        if (!url) {
+          throw new Error("expected temporary database URL");
+        }
+        await applySql(
+          url,
+          `CREATE SCHEMA app;
+           CREATE TYPE app."Mood" AS ENUM ('calm');
+           CREATE FUNCTION app.default_acl(p_id uuid) RETURNS uuid LANGUAGE sql AS $$ SELECT p_id $$;
+           CREATE FUNCTION app.mood_echo(p_mood app."Mood") RETURNS app."Mood" LANGUAGE sql AS $$ SELECT p_mood $$;
+           CREATE FUNCTION app.revoked(p_at timestamptz) RETURNS timestamptz LANGUAGE sql AS $$ SELECT p_at $$;
+           REVOKE ALL ON FUNCTION app.revoked(timestamptz) FROM PUBLIC;`
+        );
+
+        const granteesByRoutine = await extractRoutineExecuteGrantees({ databaseUrl: url });
+
+        expect(granteesByRoutine).toBeInstanceOf(Map);
+        expect(granteesByRoutine).toEqual(
+          new Map([
+            ["app.default_acl(uuid)", new Set(["PUBLIC"])],
+            ["app.mood_echo(app.Mood)", new Set(["PUBLIC"])],
+          ])
+        );
+      });
+    }
+  );
 });
 
 describe("catalog default privilege extraction", () => {

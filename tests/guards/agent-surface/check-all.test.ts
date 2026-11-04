@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check, runAgentSurfaceSyncGuard } from "../../../scripts/guards/check-all.mjs";
-import { agentSurfaceTargetPaths } from "../../../scripts/skills/agent-surface-safety.mjs";
+import { check, runAgentSurfaceSyncGuard } from "../../../scripts/guards/check-all.mts";
+import { agentSurfaceTargetPaths } from "../../../scripts/skills/agent-surface-safety.mts";
 import { tempGuardRepo } from "../fixture.js";
 
 function write(root: string, file: string, content: string): void {
