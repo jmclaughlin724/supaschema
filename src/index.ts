@@ -101,5 +101,7 @@ export { runConfiguredValidators } from "./validators.js";
 export type { CorpusOptions, CorpusReport } from "./verify/corpus.js";
 export { renderCorpusReport, runCorpus } from "./verify/corpus.js";
 export { verifyMigration } from "./verify/migration.js";
+export type { RebaselineOptions, RebaselineResult } from "./workflow/rebaseline.js";
+export { rebaselineMigrations } from "./workflow/rebaseline.js";
 export type { SyncOptions, SyncResult } from "./workflow/sync.js";
 export { syncMigrations } from "./workflow/sync.js";

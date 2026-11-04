@@ -423,7 +423,30 @@ function renderAddColumn(table: SchemaObject, column: TableColumn): string {
 }
 
 function renderCreateTable(table: SchemaObject): string {
-  return spliceGuard(table);
+  let sql = table.sql;
+  const identitySqlByColumn = recordFromObject(table.metadata.columnIdentitySqlByColumn ?? {});
+  for (const [column, statement] of Object.entries(identitySqlByColumn)) {
+    if (typeof statement === "string") {
+      sql = replaceRequiredSql(sql, statement, renderAddIdentityGuard(table, column, statement));
+    }
+  }
+  const attachPartitionSql = table.metadata.partitionAttachSql;
+  if (typeof attachPartitionSql === "string") {
+    sql = replaceRequiredSql(
+      sql,
+      attachPartitionSql,
+      renderAttachPartitionGuard(table, attachPartitionSql)
+    );
+  }
+  return spliceGuard({ ...table, sql });
+}
+
+function replaceRequiredSql(sql: string, statement: string, replacement: string): string {
+  const index = sql.lastIndexOf(statement);
+  if (index < 0) {
+    throw new Error("render amendment SQL is missing from its owning object");
+  }
+  return `${sql.slice(0, index)}${replacement}${sql.slice(index + statement.length)}`;
 }
 
 function renderCreate(object: SchemaObject): string {
@@ -480,11 +503,11 @@ function renderCreateSequence(object: SchemaObject): string {
   if (typeof shape.ownedBy !== "string") {
     return spliceGuard(object);
   }
-  return spliceGuard(object, sequenceCreateSql(object, shape));
+  return ensureSemicolon(sequenceCreateSql(object, shape));
 }
 
 function sequenceCreateSql(object: SchemaObject, shape: Record<string, unknown>): string {
-  const clauses = [`CREATE SEQUENCE ${qualifiedRef(object.ref)}`];
+  const clauses = [`CREATE SEQUENCE IF NOT EXISTS ${qualifiedRef(object.ref)}`];
   const dataType = stringShapeValue(shape.as);
   if (dataType !== undefined) {
     clauses.push(`AS ${dataType}`);

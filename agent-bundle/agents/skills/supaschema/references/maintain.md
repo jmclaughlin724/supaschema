@@ -50,7 +50,20 @@ This classifies on-disk migrations against a target's applied history: applied, 
 
 **`--prune-stale` sees one target per invocation.** It classifies against the single database URL resolved for that run and deletes the resulting stale-baseline files. In a multi-target project, a version that is pending on the resolved target but already applied on another will be deleted, leaving that other target with a ghost version. Run `supaschema migrations --json` against every configured target and confirm the version is absent from all of them before pruning.
 
-## 3. Re-prove safety and contracts
+## 3. Rebaseline from the declarative tree
+
+Use whole-history re-baselining only after explicit user approval and while one session owns schema closure.
+
+```bash
+supaschema rebaseline
+supaschema rebaseline --write
+```
+
+The dry run inventories the migration-only operations that the new history will discard and plans a baseline from `empty:` to the configured declarative tree. Review that inventory before `--write`. The write lane checks and verifies the rendered baseline before replacing history, refreshes generated contracts, and stages old-migration deletions with the new baseline and contracts. It does not apply to or repair a target. Rebuild or reconcile a local target only through a separately authorized local operation; never re-baseline linked/production state from a developer machine.
+
+Direct `git rm`, filesystem deletion, patch deletion, and editor deletion remain forbidden. `migrations --prune-stale` stays the narrow pending-generated recovery lane, not a whole-corpus replacement lane.
+
+## 4. Re-prove safety and contracts
 
 ```bash
 supaschema check
@@ -59,7 +72,7 @@ supaschema types
 
 Run the full migration-directory replay check unless the owning workflow intentionally selects a narrower changed-file lane. In CI, gate with `supaschema types --check` instead: it compares regenerated contracts (including the provenance header) against on-disk outputs without writing, and fails with `SUPA_TYPES_CONTRACT_DRIFT` until `supaschema types` refreshes them. Fix unsafe SQL or stale model coverage in the canonical schema, migration, parser, or type-generation owner and regenerate — never by patching the generated file.
 
-## 4. Review the generated deltas
+## 5. Review the generated deltas
 
 Read every generated-file delta against declared schema intent, and look specifically for unexpected destructive behavior. Rendered `-- supaschema: operation ...` comments disclose destructive or drop-guard intent; that disclosure is a review aid, not a second blocker once the planner has allowed the operation.
 
@@ -72,7 +85,7 @@ supaschema type-contract
 
 See [safety.md](safety.md) for the rule packs, grading, and the deploy-safety policy fields.
 
-## 5. Prepare the maintenance change
+## 6. Prepare the maintenance change
 
 Re-run the drift gate after regeneration. A maintenance change should contain only:
 

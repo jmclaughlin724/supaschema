@@ -12,6 +12,7 @@ import {
   formatConfigValidationDiagnostics,
   pendingInstallPathConfirmationDiagnostic,
 } from "../config/validate.js";
+import { resolveVerificationDatabaseUrl } from "../database/url.js";
 import { diagnostic, hasErrors } from "../diagnostics/diagnostics.js";
 import { stageGeneratedMigrations } from "../migrations/stage.js";
 import {
@@ -34,6 +35,7 @@ import { extractSourceModel } from "../source/extract.js";
 import { currentBaselineFingerprints, defaultTreeSource } from "../source/resolve.js";
 import type { Diagnostic, SupaschemaConfig } from "../types.js";
 import { renderCorpusReport, runCorpus } from "../verify/corpus.js";
+import { type RebaselineResult, rebaselineMigrations } from "../workflow/rebaseline.js";
 import { syncMigrations } from "../workflow/sync.js";
 
 export interface ReportCommandContext {
@@ -313,6 +315,57 @@ export function registerReportCommands(program: Command, context: ReportCommandC
     );
 
   program
+    .command("rebaseline")
+    .option("--migrations-dir <dir>", "migration files directory")
+    .option(
+      "--database-url <url>",
+      "disposable verification database (default: SUPASCHEMA_DATABASE_URL, then the local Supabase stack)"
+    )
+    .option("--ensure-environment", "stub Supabase-provisioned surfaces during verification")
+    .option("--no-ensure-environment", "disable Supabase environment stubs during verification")
+    .option("--ensure-roles", "create missing NOLOGIN roles on the verification server")
+    .option(
+      "--retain <file...>",
+      "retain reviewed operational migration file(s) that the declarative tree cannot own"
+    )
+    .option("--write", "replace migration history after verification (default: dry run)")
+    .option("--json", "print the result as JSON")
+    .description(
+      "Plan or write one verified baseline from empty: to the configured declarative schema tree."
+    )
+    .action(
+      async (options: {
+        databaseUrl?: string;
+        ensureEnvironment?: boolean;
+        ensureRoles?: boolean;
+        json?: boolean;
+        migrationsDir?: string;
+        retain?: string[];
+        write?: boolean;
+      }) => {
+        const config = await context.loadCliConfig();
+        const databaseUrl = resolveVerificationDatabaseUrl(options.databaseUrl, process.cwd());
+        const configPath = context.configPath();
+        const result = await rebaselineMigrations({
+          cliVersion: context.cliVersion,
+          config,
+          ...(configPath === undefined ? {} : { configPath }),
+          ...(databaseUrl === undefined ? {} : { databaseUrl }),
+          directory: resolve(process.cwd(), options.migrationsDir ?? config.migrationsDir),
+          ...(options.ensureEnvironment === undefined
+            ? {}
+            : { ensureEnvironment: options.ensureEnvironment }),
+          ...(options.ensureRoles === undefined ? {} : { ensureRoles: options.ensureRoles }),
+          ...(options.retain === undefined
+            ? {}
+            : { retainFiles: options.retain.map((file) => resolve(process.cwd(), file)) }),
+          write: options.write === true,
+        });
+        writeRebaselineReport(context, result, options.json === true);
+      }
+    );
+
+  program
     .command("corpus")
     .option("--corpus-dir <dir>", "corpus directory", "corpus/supabase-style")
     .option(
@@ -433,6 +486,56 @@ function writeMigrationsReport(
   }
   if (hasErrors(status.diagnostics)) {
     process.exitCode = 2;
+  }
+}
+
+function writeRebaselineReport(
+  context: ReportCommandContext,
+  result: RebaselineResult,
+  json: boolean
+): void {
+  context.printDiagnostics(result.diagnostics);
+  if (json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (result.alreadyConverged) {
+    process.stdout.write(`rebaseline: already converged on ${result.baselinePath}\n`);
+  } else {
+    writeRebaselineText(result);
+  }
+  if (hasErrors(result.diagnostics)) {
+    process.exitCode = 2;
+  }
+}
+
+function writeRebaselineText(result: RebaselineResult): void {
+  process.stdout.write(
+    `rebaseline: ${result.written ? "write" : "dry run"}: ${result.operationCount} operation(s), ${result.removedFiles.length} old migration file(s), ${result.discardedOperations.length} discarded operation(s), ${result.retainedFiles.length} retained file(s)\n`
+  );
+  for (const file of result.retainedFiles) {
+    process.stdout.write(`  retain: ${file}\n`);
+  }
+  for (const file of result.removedFiles.slice(0, 20)) {
+    process.stdout.write(`  remove: ${file}\n`);
+  }
+  if (result.removedFiles.length > 20) {
+    process.stdout.write(`  remove: +${result.removedFiles.length - 20} more\n`);
+  }
+  for (const operation of result.discardedOperations.slice(0, 20)) {
+    process.stdout.write(
+      `  discard: ${operation.kind} ${operation.file}${operation.key === undefined ? "" : ` (${operation.key})`}\n`
+    );
+  }
+  if (result.discardedOperations.length > 20) {
+    process.stdout.write(`  discard: +${result.discardedOperations.length - 20} more\n`);
+  }
+  for (const file of result.generatedMigrationPaths) {
+    process.stdout.write(`  baseline: ${file}\n`);
+  }
+  for (const file of result.writtenContractPaths) {
+    process.stdout.write(`  types: wrote ${file}\n`);
+  }
+  for (const file of result.staged) {
+    process.stdout.write(`  staged: ${file}\n`);
   }
 }
 

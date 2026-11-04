@@ -834,12 +834,13 @@ function applyColumnIdentityAmendments(
       };
     }
     const sequenceOptionOnly = amendment.action === "set" && amendment.identity === undefined;
-    const identitySqlByColumn = sequenceOptionOnly
-      ? {
-          ...asRecord(table.metadata.columnIdentitySqlByColumn),
-          [amendment.column]: marker.sql,
-        }
-      : asRecord(table.metadata.columnIdentitySqlByColumn);
+    const identitySqlByColumn =
+      amendment.action === "add" || sequenceOptionOnly
+        ? {
+            ...asRecord(table.metadata.columnIdentitySqlByColumn),
+            [amendment.column]: marker.sql,
+          }
+        : asRecord(table.metadata.columnIdentitySqlByColumn);
     if (sequenceOptionOnly) {
       nextColumns[columnIndex] = {
         ...nextColumns[columnIndex],

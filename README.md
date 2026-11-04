@@ -16,6 +16,7 @@ Free and open source under MIT. Install the package, run `supaschema init`, and 
 
 ```bash
 supaschema sync  # diff, check, types, stage, safety, apply/dry-run, reconcile
+supaschema rebaseline  # dry-run a whole-history baseline replacement
 ```
 
 ![supaschema vs diff engines at 1,000 tables: median diff latency bars](docs/public/images/benchmarks/head-to-head-xl-bars.svg)
@@ -97,7 +98,7 @@ Read config as four decisions: `schemaPaths` and `migrationsDir` define the recu
 
 | Surface | What it gives you |
 | --- | --- |
-| CLI | `diff`, `stage`, `apply`, `types`, `check`, `verify`, `sync`, `scan`, `migrations`, `config validate`, inspection commands, diagnostics, and shell completion. |
+| CLI | `diff`, `stage`, `apply`, `types`, `check`, `verify`, `sync`, `rebaseline`, `scan`, `migrations`, `config validate`, inspection commands, diagnostics, and shell completion. |
 | Library | Typed ESM exports for the same core pipeline, including extraction, planning, rendering, checking, verification, apply/sync, type generation, and config loading. |
 | Agent bundle | A public-safe prompt, rules, skills, and hooks for Claude, Codex, and AGENTS-compatible tools working in a consuming repository. |
 | Docs site | Task guides, command pages, configuration references, comparison pages, support matrix, diagnostics, and support guidance. |

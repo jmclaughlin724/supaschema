@@ -291,9 +291,10 @@ async function applyBootstrapInventory(
   await applySql(targetUrl, sql, "per-statement");
 }
 
-async function bootstrapInventorySql(
+export async function bootstrapInventorySql(
   config: SupaschemaConfig,
-  cwd: string | undefined
+  cwd: string | undefined,
+  includeExtensions = false
 ): Promise<string> {
   const root = cwd ?? process.cwd();
   const chunks: string[] = [];
@@ -306,13 +307,23 @@ async function bootstrapInventorySql(
       .sort((left, right) => left.localeCompare(right));
     for (const file of files) {
       const path = join(bootstrapDir, file);
-      chunks.push(await filterBootstrapInventorySql(await readFile(path, "utf8"), path));
+      chunks.push(
+        await filterUnreplayableVerificationSql(
+          await readFile(path, "utf8"),
+          path,
+          includeExtensions
+        )
+      );
     }
   }
   return chunks.join("\n");
 }
 
-async function filterBootstrapInventorySql(sql: string, file: string): Promise<string> {
+async function filterUnreplayableVerificationSql(
+  sql: string,
+  file: string,
+  includeExtensions: boolean
+): Promise<string> {
   const parsed = await parseSqlAst(sql, file);
   if (parsed.ast === undefined || hasErrors(parsed.diagnostics)) {
     throw new Error(
@@ -320,7 +331,9 @@ async function filterBootstrapInventorySql(sql: string, file: string): Promise<s
     );
   }
   return astStatements(parsed.ast, sql)
-    .filter((statement) => !isUnreplayableVerificationExtensionStatement(statement))
+    .filter(
+      (statement) => includeExtensions || !isUnreplayableVerificationExtensionStatement(statement)
+    )
     .map((statement) => `${statement.text};`)
     .join("\n");
 }
@@ -345,8 +358,12 @@ async function applyVerificationScenario(
   config: SupaschemaConfig
 ): Promise<void> {
   await applyModel(migrationUrl, from);
-  await applyMigrationChain(migrationUrl, migrations, config.transactionMode);
-  await applyMigrationChain(migrationUrl, migrations, config.transactionMode);
+  const replayableMigrations = new Map<string, string>();
+  for (const [file, sql] of migrations) {
+    replayableMigrations.set(file, await filterUnreplayableVerificationSql(sql, file, false));
+  }
+  await applyMigrationChain(migrationUrl, replayableMigrations, config.transactionMode);
+  await applyMigrationChain(migrationUrl, replayableMigrations, config.transactionMode);
   await applyModel(targetUrl, to);
 }
 

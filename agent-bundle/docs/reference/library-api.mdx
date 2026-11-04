@@ -23,6 +23,7 @@ import {
   runTypeSafetyGate, // deploy policy over type-contract diagnostics
   runRlsSafetyGate, // deploy policy over RLS/grant diagnostics
   syncMigrations, // gate + orchestrate the migration runner
+  rebaselineMigrations, // replace history with one verified declarative baseline
   runCorpus, // the corpus oracle
   resolveDatabaseUrl,
   parseLineage,
@@ -50,6 +51,7 @@ import {
 | `runDirectMigrationRunner` / `runSupabaseCliMigrationRunner`           | `sync`       | Apply pending migration units through direct PostgreSQL or the Supabase CLI adapter.                                                                               |
 | `runTypeSafetyGate` / `runRlsSafetyGate`                               | `sync`       | Run deploy-safety policy gates without depending on the standalone `type-contract` report command.                                                                 |
 | `syncMigrations`                                                       | `sync`       | Gate pending migrations, then optionally drive the selected runner.                                                                                                |
+| `rebaselineMigrations`                                                 | `rebaseline` | Dry-run or write one verified baseline from `empty:` to the configured declarative tree, with discarded-operation reporting, reviewed operational-file retention, and replacement rollback. |
 | `auditModel` / `renderAuditReport`                                     | `audit`      | Support-matrix coverage report for adopting an existing schema.                                                                                                    |
 | `runCorpus` / `renderCorpusReport`                                     | `corpus`     | Replay a corpus tree and require reconvergence to zero.                                                                                                            |
 | `collectSchemaShapes` / `generateDatabaseTypes` / `generateZodSchemas` | `types`      | Collect one schema shape graph, then generate upstream-compatible TypeScript database types plus separate runtime Zod validators from the PostgreSQL schema model. |
@@ -66,7 +68,7 @@ Pass `{ postgrestVersion: "12" }` as the second argument to `generateDatabaseTyp
 | `parseLineage` / `latestLineage` / `lineageLine`                                                                                                                   | Read and produce the `-- supaschema: lineage` markers that chain migrations.                                                                                  |
 | `runConfiguredValidators`                                                                                                                                          | Run the configured external validators (`squawk`, `sqlfluff`, …) against SQL.                                                                                 |
 
-All exports ship TypeScript types, including `SchemaModel`, `MigrationPlan`, `SyncOptions`, and `CorpusReport`.
+All exports ship TypeScript types, including `SchemaModel`, `MigrationPlan`, `SyncOptions`, `RebaselineOptions`, `RebaselineResult`, and `CorpusReport`.
 
 ## Public vs internal surface
 

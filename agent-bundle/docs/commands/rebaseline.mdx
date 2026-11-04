@@ -1,0 +1,73 @@
+---
+title: "rebaseline"
+description: "Replace migration history with one verified baseline from the configured declarative schema tree."
+keywords: ["rebaseline", "baseline", "migration history", "empty:", "verify"]
+---
+
+`rebaseline` plans one migration from `empty:` to the configured declarative schema tree. Foundational SQL under `supabase/schemas/_bootstrap/**`, or the equivalent configured schema root, is emitted before the model-driven baseline so fresh databases receive extensions, roles, and other bootstrap inventory in migration order. It replaces the existing migration corpus only after the new baseline passes static checks plus apply-twice and reconvergence verification.
+
+Use it when the current declarative tree is the intended source for a fresh migration history. Do not use it to repair a target database or to preserve data movement and control-plane operations that exist only in old migrations.
+
+## Dry run
+
+```bash
+supaschema rebaseline
+supaschema rebaseline --json
+```
+
+The dry run makes no repository changes. It reports:
+
+- the planned baseline path and schema-operation count;
+- every old migration file selected for removal;
+- migration-corpus operations that the new history will discard, including data statements and `DO` blocks;
+- static replay-safety diagnostics for the rendered baseline.
+
+Old migration replay is not a prerequisite. Supaschema parses the old corpus for this inventory while planning the new baseline from `empty:`.
+
+Review the discarded-operation inventory before writing. Required runtime behavior that exists only in old migrations must move to an authorized declarative or reviewed operational owner before its old file is removed.
+
+Use exact `--retain <file...>` paths only for reviewed operational migrations that the declarative tree cannot own, such as managed Realtime policies. Their SQL is copied into new operational migration paths versioned after the baseline, while the original files join the removal set. Retained operations are excluded from the discarded-operation set. This keeps fresh replays ordered: declarative schema first, operational policies second. Do not use `--retain` for structural migrations or data backfills that the new baseline replaces.
+
+## Write
+
+```bash
+supaschema rebaseline --write
+```
+
+The write lane resolves a disposable verification database from `--database-url`, `SUPASCHEMA_DATABASE_URL`, or the local Supabase stack. It refuses replacement when no verification URL resolves.
+
+After the baseline passes verification, supaschema:
+
+1. replaces the old SQL migration files with the new baseline, any concurrent companion, and re-versioned retained operational files;
+2. preserves non-SQL files in the migration directory;
+3. restores the previous migration history and generated contracts if replacement fails;
+4. refreshes configured TypeScript and Zod contracts;
+5. stages old-migration deletions, the new baseline, declarative sources, configuration, and generated contracts in Git.
+
+An identical second run reports `alreadyConverged` and makes no changes.
+
+`SUPA_REBASELINE_TARGET_REBUILD_REQUIRED` warns that applied target history is unchanged. Rebaseline never applies to, resets, or repairs a target. Rebuild or reconcile each affected target through a separately authorized target operation before running `sync`.
+
+## Options
+
+| Option | Meaning |
+| --- | --- |
+| `--migrations-dir <dir>` | Override `config.migrationsDir`. |
+| `--database-url <url>` | Disposable PostgreSQL URL whose role can create and drop verification databases. |
+| `--ensure-environment` / `--no-ensure-environment` | Enable or disable Supabase-managed surface stubs during verification. |
+| `--ensure-roles` | Create missing referenced NOLOGIN roles on the verification server. |
+| `--retain <file...>` | Re-version exact reviewed operational migration files after the baseline because the declarative tree cannot own them. |
+| `--write` | Replace history after verification. Without this flag the command is a dry run. |
+| `--json` | Emit the complete structured result, including discarded operations and staged paths. |
+
+## Result
+
+The typed `rebaselineMigrations` API returns:
+
+- `alreadyConverged`, `written`, and `targetRebuildRequired`;
+- `baselinePath` and `generatedMigrationPaths`;
+- `removedFiles`, `retainedFiles`, and `discardedOperations`;
+- `writtenContractPaths` and `staged`;
+- `operationCount` and structured `diagnostics`.
+
+Exit `0` means the dry run or write completed, including an already-converged no-op. Exit `2` means a diagnostic error blocked completion. Runtime and argument failures exit `1`.

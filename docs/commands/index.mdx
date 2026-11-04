@@ -50,10 +50,16 @@ Open the command page when you need exact flags or exit codes.
 
 ## Operate
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="migrations" icon="list-checks" href="/commands/migrations">
     Reconcile files on disk with applied database history.
   </Card>
+  <Card title="rebaseline" icon="history" href="/commands/rebaseline">
+    Replace migration history with one verified declarative baseline.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
   <Card title="sync" icon="refresh-cw" href="/commands/sync">
     Run the full diff, check, types, stage, apply, and reconcile workflow.
   </Card>

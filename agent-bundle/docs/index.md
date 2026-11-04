@@ -21,6 +21,7 @@
 - [agent-bundle/docs/commands/migrations.mdx](https://supaschema.com/docs/commands/migrations)
 - [agent-bundle/docs/commands/onboard.mdx](https://supaschema.com/docs/commands/onboard)
 - [agent-bundle/docs/commands/plan.mdx](https://supaschema.com/docs/commands/plan)
+- [agent-bundle/docs/commands/rebaseline.mdx](https://supaschema.com/docs/commands/rebaseline)
 - [agent-bundle/docs/commands/scan.mdx](https://supaschema.com/docs/commands/scan)
 - [agent-bundle/docs/commands/selfcheck.mdx](https://supaschema.com/docs/commands/selfcheck)
 - [agent-bundle/docs/commands/stage.mdx](https://supaschema.com/docs/commands/stage)

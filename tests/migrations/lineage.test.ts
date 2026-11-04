@@ -1106,4 +1106,39 @@ describe("diff lineage chain gate", () => {
     expect(clobber.stderr).toContain("SUPA_DIFF_OUTPUT_EXISTS");
     expect(parseLineage(await readFile(first, "utf8"))).toBeDefined();
   });
+
+  it("dry-runs rebaseline without writes and requires verification for --write", async () => {
+    const root = await mkdtemp(join(tmpdir(), "supa-rebaseline-cli-"));
+    const directory = join(root, "migrations");
+    await mkdir(directory, { recursive: true });
+    await writeFile(
+      join(directory, "20260101000000_manual.sql"),
+      "INSERT INTO app.accounts (id) VALUES (1);\n"
+    );
+    await writeFile(
+      join(root, "supaschema.config.json"),
+      JSON.stringify({
+        migrationsDir: "migrations",
+        schemaPaths: [join(process.cwd(), "tests/fixtures/basic/to")],
+        sync: { targets: {} },
+        typesFile: join(root, "database.types.ts"),
+        zodFile: join(root, "database.zod.ts"),
+      })
+    );
+    const env = { ...process.env, SUPASCHEMA_DATABASE_URL: undefined };
+
+    const dryRun = await cli(["rebaseline", "--json"], { cwd: root, env });
+    expect(dryRun.code, dryRun.stderr).toBe(0);
+    const planned = JSON.parse(dryRun.stdout);
+    expect(planned.written).toBe(false);
+    expect(
+      planned.discardedOperations.map((operation: { kind: string }) => operation.kind)
+    ).toContain("data-statement");
+    expect(await readdir(directory)).toEqual(["20260101000000_manual.sql"]);
+
+    const write = await cli(["rebaseline", "--write", "--json"], { cwd: root, env });
+    expect(write.code).toBe(2);
+    expect(write.stderr).toContain("SUPA_REBASELINE_VERIFY_REQUIRED");
+    expect(await readdir(directory)).toEqual(["20260101000000_manual.sql"]);
+  });
 });
