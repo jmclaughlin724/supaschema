@@ -132,7 +132,7 @@ jobs:
       - name: Attest tarball provenance
         if: steps.preflight.outputs.SUPASCHEMA_RELEASE_SHOULD_PUBLISH_NPM == 'true'
         id: attest
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ steps.pack.outputs.tarball_path }}
       # GitHub Release creation is part of the publish transaction.
@@ -244,7 +244,7 @@ jobs:
         run: npm publish "$SUPASCHEMA_TARBALL" --access public --provenance --tag next
       - name: Attest tarball provenance
         id: attest
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ steps.pack.outputs.tarball_path }}
       - name: Registry smoke against the immutable snapshot version
